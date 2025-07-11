@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PENINGKATAN: Palet warna baru yang lebih modern (Slate & Blue) */
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* white */
+    --foreground: 224 71.4% 4.1%; /* slate-950 */
+    --card: 0 0% 100%; /* white */
+    --card-foreground: 224 71.4% 4.1%; /* slate-950 */
+    --popover: 0 0% 100%; /* white */
+    --popover-foreground: 224 71.4% 4.1%; /* slate-950 */
+    --primary: 221.2 83.2% 53.3%; /* blue-600 */
+    --primary-foreground: 210 20% 98%; /* slate-50 */
+    --secondary: 215.1 89.4% 95.9%; /* blue-50 */
+    --secondary-foreground: 221.2 83.2% 53.3%; /* blue-600 */
+    --muted: 215.4 16.3% 90.9%; /* slate-200 */
+    --muted-foreground: 215.4 16.3% 46.9%; /* slate-500 */
+    --accent: 215.1 89.4% 95.9%; /* blue-50 */
+    --accent-foreground: 221.2 83.2% 53.3%; /* blue-600 */
+    --destructive: 0 84.2% 60.2%; /* red-500 */
+    --destructive-foreground: 210 20% 98%; /* slate-50 */
+    --border: 215.2 31.8% 91.4%; /* slate-200 */
+    --input: 215.2 31.8% 91.4%; /* slate-200 */
+    --ring: 221.2 83.2% 53.3%; /* blue-600 */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 224 71.4% 4.1%; /* slate-950 */
+    --foreground: 210 20% 98%; /* slate-50 */
+    --card: 224 71.4% 4.1%; /* slate-950 */
+    --card-foreground: 210 20% 98%; /* slate-50 */
+    --popover: 224 71.4% 4.1%; /* slate-950 */
+    --popover-foreground: 210 20% 98%; /* slate-50 */
+    --primary: 217.2 91.2% 59.8%; /* blue-500 */
+    --primary-foreground: 210 20% 98%; /* slate-50 */
+    --secondary: 215.4 16.3% 26.9%; /* slate-800 */
+    --secondary-foreground: 210 20% 98%; /* slate-50 */
+    --muted: 215.4 16.3% 26.9%; /* slate-800 */
+    --muted-foreground: 215.4 16.3% 56.9%; /* slate-400 */
+    --accent: 215.4 16.3% 26.9%; /* slate-800 */
+    --accent-foreground: 210 20% 98%; /* slate-50 */
+    --destructive: 0 62.8% 30.6%; /* red-900 */
+    --destructive-foreground: 0 85.7% 97.3%; /* red-50 */
+    --border: 215.4 16.3% 26.9%; /* slate-800 */
+    --input: 215.4 16.3% 26.9%; /* slate-800 */
+    --ring: 217.2 91.2% 59.8%; /* blue-500 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
