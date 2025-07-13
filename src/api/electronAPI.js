@@ -1,5 +1,5 @@
 // Lokasi file: src/api/electronAPI.js
-// PERUBAHAN: Menghapus fungsi terkait `report-templates` (sistem lama).
+// Deskripsi: Menambahkan fungsi 'getAllTrials' untuk dasbor.
 
 const isApiReady = () => {
     if (window.api) return true;
@@ -13,9 +13,11 @@ export const addProject = (project) => isApiReady() ? window.api.addProject(proj
 export const updateProject = (project) => isApiReady() ? window.api.updateProject(project) : Promise.reject(new Error("API not ready"));
 export const deleteProject = (id) => isApiReady() ? window.api.deleteProject(id) : Promise.reject(new Error("API not ready"));
 export const setProjectStatus = (data) => isApiReady() ? window.api.setProjectStatus(data) : Promise.reject(new Error("API not ready"));
+export const duplicateProject = (id) => isApiReady() ? window.api.duplicateProject(id) : Promise.reject(new Error("API not ready"));
 
 // Trials
 export const getTrialsForProject = (projectId) => isApiReady() ? window.api.getTrialsForProject(projectId) : Promise.resolve([]);
+export const getAllTrials = () => isApiReady() ? window.api.getAllTrials() : Promise.resolve([]); // BARU
 export const addTrial = (trial) => isApiReady() ? window.api.addTrial(trial) : Promise.reject(new Error("API not ready"));
 export const updateTrial = (trial) => isApiReady() ? window.api.updateTrial(trial) : Promise.reject(new Error("API not ready"));
 export const deleteTrial = (id) => isApiReady() ? window.api.deleteTrial(id) : Promise.reject(new Error("API not ready"));
@@ -50,6 +52,9 @@ export const saveTestImageFile = (filePath) => isApiReady() ? window.api.saveTes
 export const saveReferencePdf = (filePath) => isApiReady() ? window.api.saveReferencePdf(filePath) : Promise.reject(new Error("API not ready"));
 export const readFileAsBase64 = (filePath) => isApiReady() ? window.api.readFileAsBase64(filePath) : Promise.resolve(null);
 export const saveCsv = (data) => isApiReady() ? window.api.saveCsv(data) : Promise.reject(new Error("API not ready"));
+export const saveReportAsset = (filePath) => isApiReady() ? window.api.saveReportAsset(filePath) : Promise.reject(new Error("API not ready"));
+export const listReportAssets = () => isApiReady() ? window.api.listReportAssets() : Promise.resolve([]);
+export const deleteReportAsset = (filePath) => isApiReady() ? window.api.deleteReportAsset(filePath) : Promise.reject(new Error("API not ready"));
 
 // Logging
 export const writeLog = (level, message) => { if (isApiReady()) { window.api.log({ level, message }); } };
@@ -81,7 +86,7 @@ export const openPath = (path) => isApiReady() ? window.api.openPath(path) : Pro
 // Reporting
 export const getFullReportData = (projectId) => isApiReady() ? window.api.getFullReportData(projectId) : Promise.reject(new Error("API not ready"));
 
-// Report Layouts (Report Builder v2)
+// Report Layouts (Report Builder v2/v3)
 export const getReportLayouts = () => isApiReady() ? window.api.getReportLayouts() : Promise.resolve([]);
 export const addReportLayout = (layout) => isApiReady() ? window.api.addReportLayout(layout) : Promise.reject(new Error("API not ready"));
 export const updateReportLayout = (layout) => isApiReady() ? window.api.updateReportLayout(layout) : Promise.reject(new Error("API not ready"));

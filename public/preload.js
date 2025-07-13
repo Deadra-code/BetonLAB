@@ -1,4 +1,5 @@
 // Lokasi file: public/preload.js
+// Deskripsi: Menambahkan 'getAllTrials' ke context bridge.
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -9,9 +10,11 @@ contextBridge.exposeInMainWorld('api', {
     updateProject: (project) => ipcRenderer.invoke('db:update-project', project),
     deleteProject: (id) => ipcRenderer.invoke('db:delete-project', id),
     setProjectStatus: (data) => ipcRenderer.invoke('db:set-project-status', data),
+    duplicateProject: (id) => ipcRenderer.invoke('db:duplicate-project', id),
 
     // Trials
     getTrialsForProject: (projectId) => ipcRenderer.invoke('db:get-trials-for-project', projectId),
+    getAllTrials: () => ipcRenderer.invoke('db:get-all-trials'), // BARU
     addTrial: (trial) => ipcRenderer.invoke('db:add-trial', trial),
     updateTrial: (trial) => ipcRenderer.invoke('db:update-trial', trial),
     deleteTrial: (id) => ipcRenderer.invoke('db:delete-trial', id),
@@ -46,6 +49,9 @@ contextBridge.exposeInMainWorld('api', {
     saveReferencePdf: (filePath) => ipcRenderer.invoke('file:save-reference-pdf'),
     readFileAsBase64: (filePath) => ipcRenderer.invoke('file:read-base64', filePath),
     saveCsv: (data) => ipcRenderer.invoke('file:save-csv', data),
+    saveReportAsset: (filePath) => ipcRenderer.invoke('file:save-report-asset', filePath),
+    listReportAssets: () => ipcRenderer.invoke('file:list-report-assets'),
+    deleteReportAsset: (filePath) => ipcRenderer.invoke('file:delete-report-asset', filePath),
 
     // Logging
     log: (logEntry) => ipcRenderer.send('log:write', logEntry),
@@ -77,13 +83,7 @@ contextBridge.exposeInMainWorld('api', {
     // Reporting
     getFullReportData: (projectId) => ipcRenderer.invoke('report:get-full-data', projectId),
 
-    // Report Templates (v1 - Lama)
-    getReportTemplates: () => ipcRenderer.invoke('db:get-report-templates'),
-    addReportTemplate: (template) => ipcRenderer.invoke('db:add-report-template', template),
-    updateReportTemplate: (template) => ipcRenderer.invoke('db:update-report-template', template),
-    deleteReportTemplate: (id) => ipcRenderer.invoke('db:delete-report-template', id),
-
-    // BARU: Report Layouts (v2 - Baru)
+    // Report Layouts (Report Builder v2/v3)
     getReportLayouts: () => ipcRenderer.invoke('db:get-report-layouts'),
     addReportLayout: (layout) => ipcRenderer.invoke('db:add-report-layout', layout),
     updateReportLayout: (layout) => ipcRenderer.invoke('db:update-report-layout', layout),

@@ -1,25 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, Beaker, FolderKanban, Settings, LayoutDashboard, BookOpen, FileSignature, Bell } from 'lucide-react'; // Bell ditambahkan
+// Lokasi file: src/App.jsx
+// Deskripsi: Versi lengkap dengan semua state dan handler, termasuk Badge peringatan backup.
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader2, Beaker, FolderKanban, Settings, LayoutDashboard, BookOpen, FileSignature, Bell, AlertTriangle } from 'lucide-react';
 import { useSettings } from './hooks/useSettings';
-import ProjectManager from './features/Projects/ProjectManager';
-import MaterialTestingManager from './features/MaterialTesting/MaterialTestingManager';
-import SettingsPage from './features/Settings/SettingsPage.js';
+import ProjectManager from './features/Projects/ProjectManager.jsx';
+import MaterialTestingManager from './features/MaterialTesting/MaterialTestingManager.jsx';
+import SettingsPage from './features/Settings/SettingsPage.jsx'; // Perbaikan ekstensi
 import { Button } from './components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
 import { Dialog, DialogContent, DialogTrigger } from './components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover'; // Popover ditambahkan
-import { Badge } from './components/ui/badge'; // Badge ditambahkan
+import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
+import { Badge } from './components/ui/badge';
 import ToasterProvider from './components/ui/ToasterProvider.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import TrialMixView from './features/Projects/TrialMixView';
-import Dashboard from './features/Dashboard/Dashboard';
-import TrialComparisonView from './features/Projects/TrialComparisonView';
-import GlobalSearch from './components/GlobalSearch';
+import TrialMixView from './features/Projects/TrialMixView.jsx';
+import Dashboard from './features/Dashboard/Dashboard.jsx';
+import TrialComparisonView from './features/Projects/TrialComparisonView.jsx';
+import GlobalSearch from './components/GlobalSearch.jsx';
 import { useNotifications } from './hooks/useNotifications';
-import ReferenceLibraryManager from './features/ReferenceLibrary/ReferenceLibraryManager';
-import ReportBuilderPage from './features/Reporting/ReportBuilderPage';
+import ReferenceLibraryManager from './features/ReferenceLibrary/ReferenceLibraryManager.jsx';
+import ReportBuilderPage from './features/Reporting/ReportBuilderPage.jsx';
+import AppTour from './features/Onboarding/AppTour.jsx';
 
-// BARU: Komponen untuk bel notifikasi
 const NotificationBell = ({ notifications, onNotificationClick }) => {
     return (
         <Popover>
@@ -71,10 +74,18 @@ export default function App() {
     const [isInitialStateLoaded, setIsInitialStateLoaded] = useState(false);
     const [comparisonTrials, setComparisonTrials] = useState([]);
     const [reportBuilderContext, setReportBuilderContext] = useState(null);
-    const [pendingNavigation, setPendingNavigation] = useState(null); // Untuk notifikasi
+    const [pendingNavigation, setPendingNavigation] = useState(null);
+    const [isTourRunning, setIsTourRunning] = useState(false);
 
     const { settings, handleUpdateSetting, handleSelectLogo, handleBackupDatabase, handleRestoreDatabase } = useSettings(apiReady);
     const { notifications } = useNotifications(apiReady);
+
+    const needsBackupWarning = useMemo(() => {
+        if (!settings.lastBackupDate) return true;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return new Date(settings.lastBackupDate) < thirtyDaysAgo;
+    }, [settings.lastBackupDate]);
 
     useEffect(() => {
         const handleApiReady = () => setApiReady(true);
@@ -87,6 +98,9 @@ export default function App() {
         if (settings && !isInitialStateLoaded) {
             const lastView = settings.lastActiveView || 'dashboard';
             setMainView(lastView);
+            if (!settings.hasCompletedTour) {
+                setIsTourRunning(true);
+            }
             setIsInitialStateLoaded(true);
         }
     }, [settings, isInitialStateLoaded]);
@@ -112,14 +126,11 @@ export default function App() {
         handleUpdateSetting('lastActiveTrial', JSON.stringify(trial));
     };
     
-    // BARU: Logika untuk menangani klik notifikasi
     const handleNotificationClick = (context) => {
         navigateTo('projects');
-        // Simpan konteks navigasi, akan dieksekusi oleh ProjectManager
         setPendingNavigation(context);
     };
 
-    // ... fungsi lain tetap sama ...
     const handleCompareTrials = (trials) => { setComparisonTrials(trials); setActiveTrial(null); handleUpdateSetting('lastActiveTrial', ''); };
     const handleReturnToManager = () => { setActiveTrial(null); setComparisonTrials([]); handleUpdateSetting('lastActiveTrial', ''); };
     const handleNavigateToReportBuilder = (context) => { setReportBuilderContext(context); setMainView('report-builder'); handleUpdateSetting('lastActiveView', 'report-builder'); };
@@ -127,6 +138,16 @@ export default function App() {
         if (type === 'project') { handleProjectSelect(item); } 
         else if (type === 'trial') { navigateTo('projects'); setTimeout(() => { setActiveProject(item); handleTrialSelect({ ...item, design_input: JSON.parse(item.design_input_json || '{}'), design_result: JSON.parse(item.design_result_json || '{}') }); }, 100); } 
         else if (type === 'material') { navigateTo('materials'); }
+    };
+
+    const handleTourEnd = () => {
+        handleUpdateSetting('hasCompletedTour', true);
+        setIsTourRunning(false);
+    };
+
+    const startTour = () => {
+        navigateTo('dashboard');
+        setTimeout(() => setIsTourRunning(true), 100);
     };
 
     const renderMainContent = () => {
@@ -160,19 +181,32 @@ export default function App() {
     return (
         <TooltipProvider delayDuration={0}>
             <ToasterProvider />
+            <AppTour run={isTourRunning} onTourEnd={handleTourEnd} />
             <div className={`flex h-screen font-sans ${settings.theme}`}>
                 <div className="flex h-full w-full bg-background text-foreground">
                     <nav className="w-20 border-r bg-card p-4 flex flex-col items-center flex-shrink-0">
-                        <div className="mb-8"><img src={settings.logoPath ? `file://${settings.logoPath}` : 'https://placehold.co/40x40/e2e8f0/303030?text=BL'} alt="Logo" className="w-10 h-10 object-contain rounded-lg"/></div>
+                        <div className="mb-8"><img src={settings.logoPath ? `data:image/png;base64,${settings.logoBase64}` : 'https://placehold.co/40x40/e2e8f0/303030?text=BL'} alt="Logo" className="w-10 h-10 object-contain rounded-lg"/></div>
                         <div className="space-y-3 flex flex-col items-center">
-                            <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'dashboard' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('dashboard')}><LayoutDashboard className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Dashboard</TooltipContent></Tooltip>
-                            <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'projects' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('projects')}><FolderKanban className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Manajemen Proyek</TooltipContent></Tooltip>
-                            <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'materials' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('materials')}><Beaker className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Pengujian Material</TooltipContent></Tooltip>
+                            <Tooltip><TooltipTrigger asChild><Button className="nav-dashboard" variant={mainView === 'dashboard' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('dashboard')}><LayoutDashboard className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Dashboard</TooltipContent></Tooltip>
+                            <Tooltip><TooltipTrigger asChild><Button className="nav-projects" variant={mainView === 'projects' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('projects')}><FolderKanban className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Manajemen Proyek</TooltipContent></Tooltip>
+                            <Tooltip><TooltipTrigger asChild><Button className="nav-materials" variant={mainView === 'materials' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('materials')}><Beaker className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Pengujian Material</TooltipContent></Tooltip>
                             <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'report-builder' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('report-builder')}><FileSignature className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Report Builder</TooltipContent></Tooltip>
                             <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'references' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('references')}><BookOpen className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Pustaka Referensi</TooltipContent></Tooltip>
                         </div>
                         <div className="mt-auto flex flex-col items-center">
-                             <Dialog><Tooltip><TooltipTrigger asChild><DialogTrigger asChild><Button variant='ghost' size="icon"><Settings className="h-5 w-5"/></Button></DialogTrigger></TooltipTrigger><TooltipContent side="right">Pengaturan</TooltipContent></Tooltip><DialogContent className="max-w-4xl"><SettingsPage settings={settings} onUpdate={handleUpdateSetting} onSelectLogo={handleSelectLogo} onBackup={handleBackupDatabase} onRestore={handleRestoreDatabase}/></DialogContent></Dialog>
+                             <Dialog><Tooltip><TooltipTrigger asChild><DialogTrigger asChild>
+                                <Button variant='ghost' size="icon" className="relative">
+                                    <Settings className="h-5 w-5"/>
+                                    {needsBackupWarning && (
+                                        <div className="absolute top-1 right-1">
+                                            <AlertTriangle className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                        </div>
+                                    )}
+                                </Button>
+                             </DialogTrigger></TooltipTrigger><TooltipContent side="right">
+                                Pengaturan
+                                {needsBackupWarning && <p className="text-yellow-500">Backup data disarankan</p>}
+                             </TooltipContent></Tooltip><DialogContent className="max-w-4xl"><SettingsPage settings={settings} onUpdate={handleUpdateSetting} onSelectLogo={handleSelectLogo} onBackup={handleBackupDatabase} onRestore={handleRestoreDatabase} onStartTour={startTour}/></DialogContent></Dialog>
                         </div>
                     </nav>
 

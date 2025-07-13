@@ -1,5 +1,5 @@
 // Lokasi file: src/features/MaterialTesting/AggregateBlending.js
-// Deskripsi: Perbaikan bug pada komponen Select untuk mencegah crash.
+// Deskripsi: Versi lengkap dengan tampilan ringkasan properti campuran secara real-time.
 
 import React, { useState, useMemo } from 'react';
 import { Button } from '../../components/ui/button';
@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogT
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { PlusCircle, Save } from 'lucide-react';
 import * as api from '../../api/electronAPI';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 
-// Helper function to get the active sieve analysis test for a material
 const getActiveSieveTest = async (materialId) => {
     if (!materialId) return null;
     const tests = await api.getTestsForMaterial(materialId);
@@ -41,9 +41,9 @@ const sniBoundaries = {
 const AggregateBlending = ({ materials, onSave }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [components, setComponents] = useState([
-        { id: null, ratio: 50, sieveData: null },
-        { id: null, ratio: 50, sieveData: null },
-        { id: null, ratio: 0, sieveData: null },
+        { id: null, ratio: 50, sieveData: null, fm: 0 },
+        { id: null, ratio: 50, sieveData: null, fm: 0 },
+        { id: null, ratio: 0, sieveData: null, fm: 0 },
     ]);
     const [blendedName, setBlendedName] = useState('');
     const [blendedType, setBlendedType] = useState('coarse_aggregate');
@@ -53,12 +53,11 @@ const AggregateBlending = ({ materials, onSave }) => {
     }, [materials]);
     
     const handleComponentChange = async (index, materialIdStr) => {
-        // PERBAIKAN: Cek untuk nilai 'none' sebagai penanda untuk reset
         const materialId = (materialIdStr && materialIdStr !== 'none') ? parseInt(materialIdStr) : null;
+        const newComponents = [...components];
 
         if (!materialId) {
-            const newComponents = [...components];
-            newComponents[index] = { id: null, ratio: index === 2 ? 0 : 50, sieveData: null };
+            newComponents[index] = { id: null, ratio: newComponents[index].ratio, sieveData: null, fm: 0 };
             setComponents(newComponents);
             return;
         }
@@ -68,9 +67,10 @@ const AggregateBlending = ({ materials, onSave }) => {
             alert('Material yang dipilih tidak memiliki data Analisis Saringan yang aktif.');
             return;
         }
-        const newComponents = [...components];
+        
         newComponents[index].id = materialId;
         newComponents[index].sieveData = sieveData.table;
+        newComponents[index].fm = sieveData.finenessModulus || 0;
         setComponents(newComponents);
     };
 
@@ -103,15 +103,20 @@ const AggregateBlending = ({ materials, onSave }) => {
         setComponents(newComponents);
     };
 
-    const chartData = useMemo(() => {
-        const validComponents = components.filter(c => c.sieveData);
-        if (validComponents.length === 0) return [];
+    const { chartData, blendedFm } = useMemo(() => {
+        const validComponents = components.filter(c => c.sieveData && c.ratio > 0);
+        if (validComponents.length === 0) return { chartData: [], blendedFm: 0 };
 
         const allSieveSizes = Object.keys(sniBoundaries).map(s => parseFloat(s)).sort((a,b) => b-a);
         const totalRatio = validComponents.reduce((sum, c) => sum + c.ratio, 0);
-        if (totalRatio === 0) return [];
+        if (totalRatio === 0) return { chartData: [], blendedFm: 0 };
 
-        return allSieveSizes.map(size => {
+        let calculatedBlendedFm = 0;
+        validComponents.forEach(comp => {
+            calculatedBlendedFm += comp.fm * (comp.ratio / totalRatio);
+        });
+
+        const data = allSieveSizes.map(size => {
             let combinedPassing = 0;
             validComponents.forEach(comp => {
                 const passing = comp.sieveData[String(size)]?.passingPercent || 0;
@@ -126,6 +131,7 @@ const AggregateBlending = ({ materials, onSave }) => {
                 'Batas Bawah SNI': boundary?.lower,
             };
         });
+        return { chartData: data, blendedFm: calculatedBlendedFm };
     }, [components]);
 
     const handleSaveBlend = async () => {
@@ -141,7 +147,7 @@ const AggregateBlending = ({ materials, onSave }) => {
         const success = await onSave(newMaterial);
         if (success) {
             setIsOpen(false);
-            setComponents([{ id: null, ratio: 50, sieveData: null }, { id: null, ratio: 50, sieveData: null }, { id: null, ratio: 0, sieveData: null }]);
+            setComponents([{ id: null, ratio: 50, sieveData: null, fm: 0 }, { id: null, ratio: 50, sieveData: null, fm: 0 }, { id: null, ratio: 0, sieveData: null, fm: 0 }]);
             setBlendedName('');
         }
     };
@@ -168,7 +174,6 @@ const AggregateBlending = ({ materials, onSave }) => {
                                 <Select onValueChange={(val) => handleComponentChange(index, val)} value={comp.id?.toString() || ''}>
                                     <SelectTrigger><SelectValue placeholder="Pilih Agregat..." /></SelectTrigger>
                                     <SelectContent>
-                                        {/* PERBAIKAN: Menggunakan nilai 'none' yang valid */}
                                         <SelectItem value="none">-- Kosong --</SelectItem>
                                         {availableAggregates.map(m => <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>)}
                                     </SelectContent>
@@ -177,6 +182,16 @@ const AggregateBlending = ({ materials, onSave }) => {
                                 <Input type="range" min="0" max="100" value={comp.ratio} onChange={e => handleRatioChange(index, e.target.value)} className="w-full mt-1" disabled={!comp.id} />
                             </div>
                         ))}
+                        
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base">Ringkasan Campuran</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm font-medium">Modulus Kehalusan Gabungan:</p>
+                                <p className="text-2xl font-bold">{blendedFm.toFixed(2)}</p>
+                            </CardContent>
+                        </Card>
                         
                         <div className="pt-4 border-t">
                              <h3 className="font-semibold">Simpan Hasil Campuran</h3>

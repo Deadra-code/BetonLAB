@@ -1,12 +1,12 @@
 // Lokasi file: src/electron/main.js
-// Deskripsi: Versi fungsional penuh, mengaktifkan kembali database dan semua fitur.
+// Deskripsi: Perbaikan path untuk mode development dan production.
 
 const { app, dialog, BrowserWindow } = require('electron');
 const path = require('path');
 const log = require('electron-log');
 const { initializeDatabase, getDbInstance, closeDatabase } = require('./database');
-const { createWindow } = require('./windowManager');
 const { registerIpcHandlers } = require('./ipcHandlers');
+const isDev = require('electron-is-dev');
 
 // --- Pengaturan Logging ---
 log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs/main.log');
@@ -28,7 +28,40 @@ app.whenReady().then(async () => {
         await initializeDatabase();
         const db = getDbInstance();
         registerIpcHandlers(db); // Daftarkan semua handler IPC
-        createWindow();
+        
+        // --- PERBAIKAN KUNCI DI SINI ---
+        // Menentukan path preload yang benar untuk dev dan prod
+        const preloadScriptPath = isDev 
+            ? path.join(__dirname, '../../public/preload.js') 
+            : path.join(__dirname, '../preload.js');
+
+        const mainWindow = new BrowserWindow({
+            width: 1600,
+            height: 1000,
+            webPreferences: {
+                preload: preloadScriptPath,
+                nodeIntegration: false,
+                contextIsolation: true,
+            },
+            icon: path.join(__dirname, '../../public/favicon.ico'),
+            show: false
+        });
+
+        // Menentukan URL yang akan dimuat
+        const startUrl = isDev
+            ? 'http://localhost:3000'
+            : `file://${path.join(__dirname, '../../index.html')}`; // Path yang benar untuk build
+
+        mainWindow.loadURL(startUrl);
+
+        mainWindow.once('ready-to-show', () => {
+            mainWindow.show();
+        });
+
+        if (isDev) {
+            mainWindow.webContents.openDevTools({ mode: 'detach' });
+        }
+
     } catch (error) {
         log.error('Fatal: Could not initialize the application.', error);
         dialog.showErrorBox('Application Error', 'Could not initialize the application. See logs for details.');
@@ -45,7 +78,7 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
+        // Jika diperlukan, panggil kembali fungsi createWindow di sini
     }
 });
 

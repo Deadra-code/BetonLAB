@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useProjects } from '../../hooks/useProjects';
 import { useMaterials } from '../../hooks/useMaterials';
+import { useAllTrials } from '../../hooks/useAllTrials'; // BARU
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Package, Folder, Clock, Beaker, User, FilterX } from 'lucide-react';
 
-// PERUBAHAN: onProjectSelect sekarang akan dipanggil dengan objek proyek lengkap
 const RecentProjects = ({ projects, onProjectSelect, title = "Proyek Terakhir Dikerjakan" }) => (
     <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardHeader>
@@ -29,7 +29,6 @@ const RecentProjects = ({ projects, onProjectSelect, title = "Proyek Terakhir Di
                                     </p>
                                 </div>
                             </div>
-                            {/* PERUBAIKAN: Memanggil onProjectSelect dengan seluruh objek 'p' */}
                             <Button variant="ghost" size="sm" onClick={() => onProjectSelect(p)}>
                                 Buka Proyek
                             </Button>
@@ -43,7 +42,6 @@ const RecentProjects = ({ projects, onProjectSelect, title = "Proyek Terakhir Di
     </Card>
 );
 
-// Komponen lain tidak berubah
 const MaterialLibrarySummary = ({ materials }) => {
     const summary = materials.reduce((acc, mat) => {
         if (mat.material_type === 'fine_aggregate') acc.fine += 1;
@@ -68,15 +66,18 @@ const MaterialLibrarySummary = ({ materials }) => {
     );
 };
 
-const TrialMixStats = ({ projects, onBarClick }) => {
+// PERUBAHAN LOGIKA KOMPONEN
+const TrialMixStats = ({ trials, onBarClick }) => {
     const data = useMemo(() => {
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-        const monthlyData = projects.reduce((acc, proj) => {
-            const monthIndex = new Date(proj.createdAt).getMonth();
+        
+        // LOGIKA BARU: Gunakan 'trials' bukan 'projects'
+        const monthlyData = trials.reduce((acc, trial) => {
+            const monthIndex = new Date(trial.created_at).getMonth(); // Gunakan created_at dari trial
             if (!acc[monthIndex]) {
                 acc[monthIndex] = { name: monthNames[monthIndex], monthIndex: monthIndex, trials: 0 };
             }
-            acc[monthIndex].trials += 1; 
+            acc[monthIndex].trials += 1; // Ini sekarang benar-benar menghitung trial
             return acc;
         }, {});
         
@@ -87,12 +88,12 @@ const TrialMixStats = ({ projects, onBarClick }) => {
         }
         
         return Object.values(monthlyData).sort((a, b) => a.monthIndex - b.monthIndex);
-    }, [projects]);
+    }, [trials]); // Dependensi diubah menjadi 'trials'
 
     return (
         <Card className="shadow-sm hover:shadow-md transition-shadow h-full">
             <CardHeader>
-                <CardTitle className="flex items-center text-lg"><Beaker className="mr-3 h-5 w-5 text-primary" /> Aktivitas Proyek per Bulan</CardTitle>
+                <CardTitle className="flex items-center text-lg"><Beaker className="mr-3 h-5 w-5 text-primary" /> Aktivitas Trial Mix per Bulan</CardTitle>
                 <CardDescription>Klik pada bar untuk memfilter proyek di bulan tersebut.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -102,7 +103,7 @@ const TrialMixStats = ({ projects, onBarClick }) => {
                         <XAxis dataKey="name" fontSize={12} />
                         <YAxis allowDecimals={false} fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Bar dataKey="trials" fill="hsl(var(--primary))" name="Jumlah Proyek" radius={[4, 4, 0, 0]} onClick={onBarClick} cursor="pointer" />
+                        <Bar dataKey="trials" fill="hsl(var(--primary))" name="Jumlah Trial Mix" radius={[4, 4, 0, 0]} onClick={onBarClick} cursor="pointer" />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
@@ -110,10 +111,10 @@ const TrialMixStats = ({ projects, onBarClick }) => {
     );
 };
 
-// PERUBAHAN: onProjectSelect sekarang menerima objek proyek penuh
 export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
     const { projects, loading: projectsLoading } = useProjects(apiReady);
     const { materials, loading: materialsLoading } = useMaterials(apiReady);
+    const { allTrials, loading: trialsLoading } = useAllTrials(apiReady); // Panggil hook baru
     const [filterMonth, setFilterMonth] = useState(null);
 
     const handleBarClick = (data) => {
@@ -136,7 +137,8 @@ export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const filterTitle = filterMonth !== null ? `Proyek di Bulan ${monthNames[filterMonth]}` : "Proyek Terakhir Dikerjakan";
 
-    if (projectsLoading || materialsLoading) {
+    // Ganti kondisi loading
+    if (projectsLoading || materialsLoading || trialsLoading) {
         return <div className="p-6">Memuat data dashboard...</div>;
     }
 
@@ -158,7 +160,8 @@ export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
                     <MaterialLibrarySummary materials={materials} />
                 </div>
                 <div>
-                    <TrialMixStats projects={projects} onBarClick={handleBarClick} />
+                    {/* Ganti prop 'projects' menjadi 'allTrials' */}
+                    <TrialMixStats trials={allTrials} onBarClick={handleBarClick} />
                 </div>
             </div>
         </div>

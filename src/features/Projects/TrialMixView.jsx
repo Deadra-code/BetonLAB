@@ -1,18 +1,31 @@
-// Lokasi file: src/features/Projects/TrialMixView.js
-
+// ========================================================================
+// Lokasi file: src/features/Projects/TrialMixView.jsx
+// Perbaikan: Mengubah ekstensi impor JobMixDesign menjadi .jsx
+// ========================================================================
 import React, { useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import JobMixDesign from './JobMixDesign';
-import CompressiveStrengthTest from './CompressiveStrengthTest';
-import { Beaker, FileText, Notebook, TrendingUp, FileSignature } from 'lucide-react'; // BARU: Mengganti FileArchive dengan FileSignature
-import { useTrials } from '../../hooks/useTrials';
-import Breadcrumb from '../../components/ui/breadcrumb';
-import { NotesTab } from './NotesTab';
-import QualityControlChart from './QualityControlChart';
-import { useConcreteTests } from '../../hooks/useConcreteTests';
+import JobMixDesign from './JobMixDesign.jsx'; // <-- PERBAIKAN DI SINI
+import CompressiveStrengthTest from './CompressiveStrengthTest.jsx';
+import { Beaker, FileText, Notebook, TrendingUp, FileSignature, Target, Droplets, Book } from 'lucide-react';
+import { useTrials } from '../../hooks/useTrials.js';
+import Breadcrumb from '../../components/ui/breadcrumb.jsx';
+import { NotesTab } from './NotesTab.jsx';
+import QualityControlChart from './QualityControlChart.jsx';
+import { useConcreteTests } from '../../hooks/useConcreteTests.js';
 import { Button } from '../../components/ui/button';
 
-// PERUBAHAN: Menerima prop onNavigateToReportBuilder
+const InfoHeaderCard = ({ label, value, unit, icon }) => (
+    <div className="flex items-center p-3 bg-muted/50 rounded-lg">
+        <div className="mr-4 text-primary">
+            {icon}
+        </div>
+        <div>
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <p className="text-base font-bold">{value || '-'} <span className="text-sm font-normal text-muted-foreground">{unit}</span></p>
+        </div>
+    </div>
+);
+
 export default function TrialMixView({ trial, onBack, apiReady, onNavigateToReportBuilder }) {
     const strengthChartRef = useRef(null);
     const sqcChartRef = useRef(null);
@@ -38,11 +51,10 @@ export default function TrialMixView({ trial, onBack, apiReady, onNavigateToRepo
     }
     return (
         <div className="h-full flex flex-col bg-background">
-            <header className="p-6 border-b bg-card space-y-3">
+            <header className="p-6 border-b bg-card space-y-4">
                 <Breadcrumb paths={breadcrumbPaths} />
                 <div className="flex justify-between items-center">
                     <h2 className="text-3xl font-bold">{trial.trial_name}</h2>
-                    {/* PERUBAHAN: Mengganti ReportingHubDialog dengan Button biasa */}
                     <Button 
                         variant="outline" 
                         onClick={() => onNavigateToReportBuilder({ 
@@ -52,6 +64,12 @@ export default function TrialMixView({ trial, onBack, apiReady, onNavigateToRepo
                     >
                         <FileSignature className="mr-2 h-4 w-4" /> Buat Laporan Trial
                     </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    <InfoHeaderCard label="f'c Rencana" value={trial.design_input?.fc} unit="MPa" icon={<Book size={24} />} />
+                    <InfoHeaderCard label="f'cr Target" value={trial.design_result?.fcr?.toFixed(2)} unit="MPa" icon={<Target size={24} />} />
+                    <InfoHeaderCard label="FAS Hasil" value={trial.design_result?.wcRatio?.toFixed(2)} unit="" icon={<Droplets size={24} />} />
                 </div>
             </header>
             

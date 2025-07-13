@@ -1,4 +1,5 @@
 // Lokasi file: src/hooks/useProjects.js
+// Deskripsi: Versi lengkap dari hook useProjects, termasuk fungsi 'duplicateProject'.
 
 import { useState, useCallback, useEffect } from 'react';
 import * as api from '../api/electronAPI';
@@ -17,7 +18,7 @@ export const useProjects = (apiReady) => {
             const list = await api.getProjects(showArchived);
             setProjects(list);
         } catch (err) {
-            notify.error("Gagal memuat daftar proyek.");
+            notify.error(`Gagal memuat proyek: ${err.message}`);
         } finally {
             setLoading(false);
         }
@@ -34,7 +35,7 @@ export const useProjects = (apiReady) => {
             notify.success("Proyek baru berhasil ditambahkan.");
             return true;
         } catch (err) {
-            notify.error("Gagal menambahkan proyek baru.");
+            notify.error(`Gagal menambahkan proyek: ${err.message}`);
             return false;
         }
     };
@@ -46,7 +47,7 @@ export const useProjects = (apiReady) => {
             notify.success("Proyek berhasil diperbarui.");
             return true;
         } catch (err) {
-            notify.error("Gagal memperbarui proyek.");
+            notify.error(`Gagal memperbarui proyek: ${err.message}`);
             return false;
         }
     };
@@ -58,7 +59,7 @@ export const useProjects = (apiReady) => {
             notify.success("Proyek berhasil dihapus.");
             return true;
         } catch (err) {
-            notify.error("Gagal menghapus proyek.");
+            notify.error(`Gagal menghapus proyek: ${err.message}`);
             return false;
         }
     };
@@ -70,7 +71,19 @@ export const useProjects = (apiReady) => {
             notify.success(`Proyek berhasil di${status === 'active' ? 'aktifkan kembali' : 'arsipkan'}.`);
             return true;
         } catch (err) {
-            notify.error("Gagal mengubah status proyek.");
+            notify.error(`Gagal mengubah status proyek: ${err.message}`);
+            return false;
+        }
+    };
+
+    const duplicateProject = async (id) => {
+        try {
+            await api.duplicateProject(id);
+            await fetchProjects();
+            notify.success("Proyek berhasil diduplikasi.");
+            return true;
+        } catch (err) {
+            notify.error(`Gagal menduplikasi proyek: ${err.message}`);
             return false;
         }
     };
@@ -84,6 +97,7 @@ export const useProjects = (apiReady) => {
         updateProject,
         deleteProject,
         setProjectStatus,
+        duplicateProject,
         refreshProjects: fetchProjects,
     };
 };

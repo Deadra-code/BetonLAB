@@ -1,11 +1,13 @@
 // Lokasi file: src/features/Reporting/components/MaterialPropertiesTable.jsx
-// Deskripsi: Komponen untuk menampilkan tabel properti material yang digunakan.
+// Deskripsi: Komponen tabel properti material dengan visibilitas kolom dan styling kustom.
 
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 
 const MaterialPropertiesTable = ({ trialData, properties }) => {
     const { design_input } = trialData || {};
+
+    // Ekstrak properti kustomisasi dengan nilai default
     const {
         title = "Tabel Properti Material",
         showSg = true,
@@ -13,6 +15,10 @@ const MaterialPropertiesTable = ({ trialData, properties }) => {
         showMoisture = true,
         showBulkDensity = true,
         showFm = true,
+        headerBgColor = '#E5E7EB',
+        headerTextColor = '#111827',
+        borderColor = '#9CA3AF',
+        borderWidth = 1,
     } = properties || {};
 
     if (!design_input) {
@@ -25,29 +31,43 @@ const MaterialPropertiesTable = ({ trialData, properties }) => {
         { name: 'Agregat Kasar', sg: design_input.sgCoarse, absorption: design_input.absorptionCoarse, moisture: design_input.moistureCoarse, bulkDensity: design_input.dryRoddedWeightCoarse, fm: '-' },
     ];
 
+    // Terapkan gaya kustom
+    const tableStyle = {
+        border: `${borderWidth}px solid ${borderColor}`,
+        borderCollapse: 'collapse',
+    };
+    const thStyle = {
+        backgroundColor: headerBgColor,
+        color: headerTextColor,
+        border: `${borderWidth}px solid ${borderColor}`,
+    };
+    const tdStyle = {
+        border: `${borderWidth}px solid ${borderColor}`,
+    };
+
     return (
         <div className="text-sm my-4">
             <h3 className="font-bold mb-2 text-base">{title}</h3>
-            <Table>
+            <Table style={tableStyle}>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Material</TableHead>
-                        {showSg && <TableHead>BJ (SSD)</TableHead>}
-                        {showAbsorption && <TableHead>Penyerapan (%)</TableHead>}
-                        {showMoisture && <TableHead>Kadar Air (%)</TableHead>}
-                        {showBulkDensity && <TableHead>Berat Isi (kg/m³)</TableHead>}
-                        {showFm && <TableHead>Modulus Halus</TableHead>}
+                        <TableHead style={thStyle}>Material</TableHead>
+                        {showSg && <TableHead style={thStyle}>BJ (SSD)</TableHead>}
+                        {showAbsorption && <TableHead style={thStyle}>Penyerapan (%)</TableHead>}
+                        {showMoisture && <TableHead style={thStyle}>Kadar Air (%)</TableHead>}
+                        {showBulkDensity && <TableHead style={thStyle}>Berat Isi (kg/m³)</TableHead>}
+                        {showFm && <TableHead style={thStyle}>Modulus Halus</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {data.map(mat => (
                         <TableRow key={mat.name}>
-                            <TableCell className="font-medium">{mat.name}</TableCell>
-                            {showSg && <TableCell>{mat.sg}</TableCell>}
-                            {showAbsorption && <TableCell>{mat.absorption}</TableCell>}
-                            {showMoisture && <TableCell>{mat.moisture}</TableCell>}
-                            {showBulkDensity && <TableCell>{mat.bulkDensity}</TableCell>}
-                            {showFm && <TableCell>{mat.fm}</TableCell>}
+                            <TableCell style={tdStyle} className="font-medium">{mat.name}</TableCell>
+                            {showSg && <TableCell style={tdStyle}>{mat.sg}</TableCell>}
+                            {showAbsorption && <TableCell style={tdStyle}>{mat.absorption}</TableCell>}
+                            {showMoisture && <TableCell style={tdStyle}>{mat.moisture}</TableCell>}
+                            {showBulkDensity && <TableCell style={tdStyle}>{mat.bulkDensity}</TableCell>}
+                            {showFm && <TableCell style={tdStyle}>{mat.fm}</TableCell>}
                         </TableRow>
                     ))}
                 </TableBody>

@@ -6,12 +6,15 @@ export const useMaterials = (apiReady) => {
     const [materials, setMaterials] = useState([]);
     const { notify } = useNotifier();
     const [loading, setLoading] = useState(false);
+    const [showArchived, setShowArchived] = useState(false); // Tambahkan state untuk arsip
 
     const fetchMaterials = useCallback(async () => {
         if (!apiReady) return;
         setLoading(true);
         try {
-            const list = await api.getMaterials();
+            // PERBAIKAN: Menggunakan getMaterialsWithActiveTests untuk mendapatkan data yang lebih kaya
+            // dan meneruskan status filter arsip.
+            const list = await api.getMaterialsWithActiveTests(showArchived);
             setMaterials(list);
         } catch (err) {
             console.error("Fetch materials error:", err);
@@ -19,8 +22,7 @@ export const useMaterials = (apiReady) => {
         } finally {
             setLoading(false);
         }
-        // PERBAIKAN: Menghapus `notify` dari dependency array untuk mencegah infinite loop.
-    }, [apiReady]);
+    }, [apiReady, showArchived, notify]);
 
     useEffect(() => {
         fetchMaterials();
@@ -34,7 +36,7 @@ export const useMaterials = (apiReady) => {
             return true;
         } catch (err) {
             console.error("Add material error:", err);
-            notify.error("Gagal menambahkan material. Nama mungkin sudah ada.");
+            notify.error(`Gagal menambahkan material: ${err.message || 'Nama mungkin sudah ada.'}`);
             return false;
         }
     };
@@ -47,7 +49,7 @@ export const useMaterials = (apiReady) => {
             return true;
         } catch (err) {
             console.error("Update material error:", err);
-            notify.error("Gagal memperbarui material.");
+            notify.error(`Gagal memperbarui material: ${err.message}`);
             return false;
         }
     };
@@ -60,7 +62,19 @@ export const useMaterials = (apiReady) => {
             return true;
         } catch (err) {
             console.error("Delete material error:", err);
-            notify.error("Gagal menghapus material.");
+            notify.error(`Gagal menghapus material: ${err.message}`);
+            return false;
+        }
+    };
+
+    const setMaterialStatus = async (id, status) => {
+        try {
+            await api.setMaterialStatus({ id, status });
+            await fetchMaterials();
+            notify.success(`Status material berhasil diubah.`);
+            return true;
+        } catch (err) {
+            notify.error(`Gagal mengubah status material: ${err.message}`);
             return false;
         }
     };
@@ -68,9 +82,12 @@ export const useMaterials = (apiReady) => {
     return {
         materials,
         loading,
+        showArchived,
+        setShowArchived,
         addMaterial,
         updateMaterial,
         deleteMaterial,
+        setMaterialStatus,
         refreshMaterials: fetchMaterials,
     };
 };

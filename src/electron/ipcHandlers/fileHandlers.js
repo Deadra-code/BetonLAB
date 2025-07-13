@@ -1,5 +1,5 @@
 // Lokasi file: src/electron/ipcHandlers/fileHandlers.js
-// Deskripsi: Handler untuk dialog file dan operasi file system.
+// Deskripsi: Versi lengkap dengan implementasi untuk menyimpan, mendaftar, dan menghapus aset laporan.
 
 const { app, dialog, shell } = require('electron');
 const path = require('path');
@@ -7,6 +7,7 @@ const fs = require('fs');
 const log = require('electron-log');
 
 function registerFileHandlers(ipcMain, db) {
+    // Handler yang sudah ada
     ipcMain.handle('dialog:open-image', async () => {
         const { canceled, filePaths } = await dialog.showOpenDialog({
             properties: ['openFile'],
@@ -82,6 +83,52 @@ function registerFileHandlers(ipcMain, db) {
             log.error(`Failed to open path ${path}:`, error);
             return { success: false, error: error.message };
         }
+    });
+
+    // --- BARU: Handler untuk Manajemen Aset Laporan ---
+
+    const getAssetsDir = () => {
+        const userDataPath = app.getPath('userData');
+        const assetsDir = path.join(userDataPath, 'report_assets');
+        if (!fs.existsSync(assetsDir)) {
+            fs.mkdirSync(assetsDir, { recursive: true });
+        }
+        return assetsDir;
+    };
+
+    // Menyimpan file aset yang diunggah
+    ipcMain.handle('file:save-report-asset', async (event, filePath) => {
+        const assetsDir = getAssetsDir();
+        const fileName = path.basename(filePath);
+        const newPath = path.join(assetsDir, fileName);
+        
+        if (fs.existsSync(newPath)) {
+            throw new Error(`File dengan nama "${fileName}" sudah ada.`);
+        }
+        
+        fs.copyFileSync(filePath, newPath);
+        log.info(`Report asset saved: ${newPath}`);
+        return newPath;
+    });
+
+    // Mendapatkan daftar semua aset yang tersimpan
+    ipcMain.handle('file:list-report-assets', async () => {
+        const assetsDir = getAssetsDir();
+        const files = fs.readdirSync(assetsDir);
+        return files.map(file => ({
+            name: file,
+            path: path.join(assetsDir, file)
+        }));
+    });
+
+    // Menghapus file aset
+    ipcMain.handle('file:delete-report-asset', async (event, filePath) => {
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            log.info(`Report asset deleted: ${filePath}`);
+            return { success: true };
+        }
+        return { success: false, error: 'File tidak ditemukan.' };
     });
 }
 

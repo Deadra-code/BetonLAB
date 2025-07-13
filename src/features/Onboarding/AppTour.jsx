@@ -54,4 +54,3 @@ const AppTour = ({ run, onTourEnd }) => {
 };
 
 export default AppTour;
-s

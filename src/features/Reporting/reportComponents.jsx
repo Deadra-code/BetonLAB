@@ -1,32 +1,38 @@
-// Lokasi file: src/features/Reporting/reportComponents.js
-// Deskripsi: Perbaikan final pada className untuk komponen multi-kolom agar kompatibel dengan Tailwind CSS Purge.
-
+// ========================================================================
+// Lokasi file: src/features/Reporting/reportComponents.jsx
+// Perbaikan: Mengubah path impor `reportUtils` menjadi path relatif yang benar
+// ========================================================================
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import {
     FileText, Columns3, BarChart2, PenLine, Type, ChevronsUpDown, Minus,
     Image as ImageIcon, GripVertical, Heading1, Heading2, Box, Repeat,
-    ListChecks, AreaChart, TableProperties, Info, ArrowUpDown
+    ListChecks, AreaChart, TableProperties, Info, ArrowUpDown, Table, Code
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/button';
 import { Trash2 } from 'lucide-react';
 
+// Impor fungsi utilitas terpusat
+import { checkConditions } from '../../utils/reporting/reportUtils.js'; // <-- PERBAIKAN DI SINI
+
 // Impor komponen render yang sebenarnya
-import HeaderComponent from './components/HeaderComponent';
-import JmdTableComponent from './components/JmdTableComponent';
-import CustomTextComponent from './components/CustomTextComponent';
-import RawStrengthTestTable from './components/RawStrengthTestTable';
-import CustomImageComponent from './components/CustomImageComponent';
-import SignatureBlock from './components/SignatureBlock';
-import TrialLoopingSection from './components/TrialLoopingSection';
-import StrengthChartComponent from './components/StrengthChartComponent';
-import SqcChartComponent from './components/SqcChartComponent';
-import MaterialPropertiesTable from './components/MaterialPropertiesTable';
-import CombinedGradationChart from './components/CombinedGradationChart';
-import StrengthSummaryTable from './components/StrengthSummaryTable';
-import TrialInfoBlock from './components/TrialInfoBlock';
-import VerticalSpacer from './components/VerticalSpacer';
+import HeaderComponent from './components/HeaderComponent.jsx';
+import JmdTableComponent from './components/JmdTableComponent.jsx';
+import CustomTextComponent from './components/CustomTextComponent.jsx';
+import RawStrengthTestTable from './components/RawStrengthTestTable.jsx';
+import CustomImageComponent from './components/CustomImageComponent.jsx';
+import SignatureBlock from './components/SignatureBlock.jsx';
+import TrialLoopingSection from './components/TrialLoopingSection.jsx';
+import StrengthChartComponent from './components/StrengthChartComponent.jsx';
+import SqcChartComponent from './components/SqcChartComponent.jsx';
+import MaterialPropertiesTable from './components/MaterialPropertiesTable.jsx';
+import CombinedGradationChart from './components/CombinedGradationChart.jsx';
+import StrengthSummaryTable from './components/StrengthSummaryTable.jsx';
+import TrialInfoBlock from './components/TrialInfoBlock.jsx';
+import VerticalSpacer from './components/VerticalSpacer.jsx';
+import CustomTableComponent from './components/CustomTableComponent.jsx';
+import ScriptBlockComponent from './components/ScriptBlockComponent.jsx';
 
 const PlaceholderComponent = ({ name }) => <div className="p-4 text-center text-muted-foreground border-2 border-dashed">{name}</div>;
 
@@ -63,8 +69,10 @@ export const AVAILABLE_COMPONENTS = [
         group: 'Elemen Primitif',
         items: [
             { id: 'custom-text', name: 'Kotak Teks', icon: <Type size={16}/>, type: 'static' },
+            { id: 'custom-table', name: 'Tabel Kustom', icon: <Table size={16}/>, type: 'static' },
             { id: 'custom-image', name: 'Gambar/Logo', icon: <ImageIcon size={16}/>, type: 'static' },
             { id: 'signature-block', name: 'Blok Tanda Tangan', icon: <PenLine size={16}/>, type: 'static' },
+            { id: 'script-block', name: 'Blok Skrip', icon: <Code size={16}/>, type: 'static' },
         ]
     }
 ];
@@ -85,6 +93,11 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
     const baseStyle = "p-2 rounded";
     const selectedStyle = "outline outline-2 outline-offset-2 outline-primary bg-primary/10";
 
+    const shouldRender = checkConditions(properties.conditions, reportData);
+    if (!shouldRender) {
+        return null;
+    }
+
     const renderContent = () => {
         const trialData = component.trialData || reportData?.trials?.[0];
 
@@ -96,6 +109,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
             case 'header': return <HeaderComponent settings={settings} properties={properties} />;
             case 'jmd-table': return <JmdTableComponent trialData={trialData} properties={properties} />;
             case 'custom-text': return <CustomTextComponent properties={properties} />;
+            case 'custom-table': return <CustomTableComponent properties={properties} />;
             case 'project-name': return <div className="font-bold text-lg">{reportData?.projectName || 'Nama Proyek'}</div>;
             case 'client-name': return <div className="text-md">Klien: {reportData?.clientName || 'Nama Klien'}</div>;
             case 'horizontal-line': return <hr className="my-4 border-t border-gray-400" />;
@@ -109,6 +123,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
             case 'strength-summary-table': return <StrengthSummaryTable trialData={trialData} properties={properties} />;
             case 'trial-info-block': return <TrialInfoBlock trialData={trialData} properties={properties} />;
             case 'vertical-spacer': return <VerticalSpacer properties={properties} />;
+            case 'script-block': return <ScriptBlockComponent properties={properties} trialData={trialData} />;
             case 'trial-loop':
                  return <TrialLoopingSection component={component} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onComponentClick={onClick} isSelected={isSelected} onDeleteComponent={onDeleteComponent} apiReady={apiReady} />;
             
@@ -137,7 +152,6 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
             case 'columns-2':
             case 'columns-3':
                 const numColumns = component.id === 'columns-3' ? 3 : 2;
-                // PERBAIKAN: Menggunakan objek pemetaan untuk memastikan Tailwind mendeteksi kelas.
                 const gridClassMap = {
                     2: 'grid-cols-2',
                     3: 'grid-cols-3',
@@ -175,7 +189,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
     };
 
     return (
-        <div onClick={() => onClick(component.instanceId)} style={wrapperStyle} className={cn(baseStyle, isSelected === component.instanceId && selectedStyle)}>
+        <div onClick={(e) => { e.stopPropagation(); onClick(component.instanceId); }} style={wrapperStyle} className={cn(baseStyle, isSelected === component.instanceId && selectedStyle)}>
             {renderContent()}
         </div>
     );

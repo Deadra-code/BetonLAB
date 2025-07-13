@@ -2,6 +2,7 @@
 module.exports = {
   darkMode: ["class"],
   content: [
+    "./index.html", // Pastikan baris ini ada
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
@@ -66,7 +67,6 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: 0 },
         },
-        // PENINGKATAN: Keyframe baru untuk animasi daftar
         "fade-in-down": {
             "0%": {
                 opacity: "0",
@@ -81,7 +81,6 @@ module.exports = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        // PENINGKATAN: Utilitas animasi baru
         "fade-in-down": "fade-in-down 0.3s ease-out"
       },
     },

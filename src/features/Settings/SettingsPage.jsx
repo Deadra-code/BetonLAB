@@ -1,5 +1,8 @@
+// Lokasi file: src/features/Settings/SettingsPage.js
+// Deskripsi: Versi lengkap dengan tombol untuk memulai ulang tur aplikasi.
+
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, DatabaseBackup, DatabaseZap, Info, Loader2 } from 'lucide-react';
+import { UploadCloud, DatabaseBackup, DatabaseZap, Info, Loader2, PlayCircle } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Button } from '../../components/ui/button';
@@ -8,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import * as api from '../../api/electronAPI';
 
-// PENINGKATAN: Komponen dialog "Tentang Aplikasi"
 const AboutDialog = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [appInfo, setAppInfo] = useState({ name: '', version: '' });
@@ -66,7 +68,7 @@ const AboutDialog = () => {
 };
 
 
-const SettingsPage = ({ settings, onUpdate, onSelectLogo, onBackup, onRestore }) => {
+const SettingsPage = ({ settings, onUpdate, onSelectLogo, onBackup, onRestore, onStartTour }) => {
     return (
         <>
             <DialogHeader>
@@ -108,19 +110,14 @@ const SettingsPage = ({ settings, onUpdate, onSelectLogo, onBackup, onRestore })
                     </Card>
                      <Card>
                         <CardHeader>
-                            <CardTitle>Tampilan</CardTitle>
+                            <CardTitle>Bantuan & Panduan</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="dark-mode" className="font-medium">
-                                    Tema Gelap (Dark Mode)
-                                </Label>
-                                <Switch
-                                    id="dark-mode"
-                                    checked={settings.theme === 'dark'}
-                                    onCheckedChange={(checked) => onUpdate('theme', checked ? 'dark' : 'light')}
-                                />
-                            </div>
+                        <CardContent className="space-y-4">
+                            <Button onClick={onStartTour} className="w-full" variant="secondary">
+                                <PlayCircle size={16} className="mr-2" />
+                                Mulai Ulang Tur Aplikasi
+                            </Button>
+                             <AboutDialog />
                         </CardContent>
                     </Card>
                 </div>
@@ -143,13 +140,21 @@ const SettingsPage = ({ settings, onUpdate, onSelectLogo, onBackup, onRestore })
                             </Button>
                         </CardContent>
                     </Card>
-                    {/* PENINGKATAN: Kartu baru untuk info aplikasi */}
                     <Card className="mt-8">
                         <CardHeader>
-                            <CardTitle>Informasi Aplikasi</CardTitle>
+                            <CardTitle>Tampilan</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <AboutDialog />
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="dark-mode" className="font-medium">
+                                    Tema Gelap (Dark Mode)
+                                </Label>
+                                <Switch
+                                    id="dark-mode"
+                                    checked={settings.theme === 'dark'}
+                                    onCheckedChange={(checked) => onUpdate('theme', checked ? 'dark' : 'light')}
+                                />
+                            </div>
                         </CardContent>
                     </Card>
                 </div>

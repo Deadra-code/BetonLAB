@@ -1,3 +1,6 @@
+// Lokasi file: src/features/MaterialTesting/SiltContentTest.js
+// Deskripsi: Versi lengkap dengan Tooltip pada tombol "Jadikan Aktif" dan validasi sebelum aktivasi.
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -7,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Loader2, TestTube2, Star } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Badge } from '../../components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 
 // Form untuk menambah data uji baru
 const TestForm = ({ onSave }) => {
@@ -17,7 +21,6 @@ const TestForm = ({ onSave }) => {
         initial_weight: '',
         washed_weight: '',
     });
-    // PEMANTAPAN: State untuk validasi inline
     const [validationError, setValidationError] = useState('');
 
     const handleChange = (field, value) => {
@@ -31,7 +34,6 @@ const TestForm = ({ onSave }) => {
         return { silt_content };
     }, [inputData]);
 
-    // PEMANTAPAN: Validasi input dengan pesan error inline
     useEffect(() => {
         const { initial_weight, washed_weight } = inputData;
         if (washed_weight && initial_weight && washed_weight > initial_weight) {
@@ -134,25 +136,44 @@ export default function SiltContentTest({ tests, onAddTest, onSetActive }) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {tests.map(test => (
-                            // PEMANTAPAN: Menambahkan highlight visual untuk baris yang aktif
-                            <TableRow key={test.id} className={cn(test.is_active_for_design && 'bg-primary/10')}>
-                                <TableCell>{new Date(test.test_date).toLocaleDateString()}</TableCell>
-                                <TableCell>{test.result_data.silt_content?.toFixed(2)}</TableCell>
-                                <TableCell>
-                                    {test.is_active_for_design ? 
-                                        <Badge variant="success"><Star className="mr-1 h-3 w-3" /> Aktif</Badge> 
-                                        : <Badge variant="secondary">Non-aktif</Badge>
-                                    }
-                                </TableCell>
-                                <TableCell>
-                                    <Button onClick={() => onSetActive({ testType: 'silt', testId: test.id })}
-                                            disabled={!!test.is_active_for_design} variant="outline">
-                                        Jadikan Aktif
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
+                        {tests.map(test => {
+                            const isResultValid = typeof test.result_data.silt_content === 'number';
+                            return (
+                                <TableRow key={test.id} className={cn(test.is_active_for_design && 'bg-primary/10')}>
+                                    <TableCell>{new Date(test.test_date).toLocaleDateString()}</TableCell>
+                                    <TableCell>{test.result_data.silt_content?.toFixed(2)}</TableCell>
+                                    <TableCell>
+                                        {test.is_active_for_design ? 
+                                            <Badge variant="success"><Star className="mr-1 h-3 w-3" /> Aktif</Badge> 
+                                            : <Badge variant="secondary">Non-aktif</Badge>
+                                        }
+                                    </TableCell>
+                                    <TableCell>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div>
+                                                        <Button 
+                                                            onClick={() => onSetActive({ testType: 'silt', testId: test.id })}
+                                                            disabled={!!test.is_active_for_design || !isResultValid} 
+                                                            variant="outline"
+                                                        >
+                                                            Jadikan Aktif
+                                                        </Button>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    {isResultValid 
+                                                        ? <p>Hasil tes ini akan digunakan secara otomatis<br/>dalam perhitungan Desain Campuran baru.</p>
+                                                        : <p>Tidak dapat diaktifkan karena data hasil tidak valid.</p>
+                                                    }
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                 </Table>
             )}

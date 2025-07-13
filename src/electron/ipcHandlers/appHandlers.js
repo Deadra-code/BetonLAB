@@ -1,5 +1,5 @@
 // Lokasi file: src/electron/ipcHandlers/appHandlers.js
-// Deskripsi: Handler untuk info aplikasi, backup, dan restore.
+// Deskripsi: Menambahkan validasi sederhana pada file restore untuk memastikan itu adalah database SQLite.
 
 const { app, dialog } = require('electron');
 const fs = require('fs');
@@ -42,6 +42,20 @@ function registerAppHandlers(ipcMain, db) {
         });
         if (!canceled && filePaths.length > 0) {
             const backupPath = filePaths[0];
+
+            // PEMATANGAN: Validasi file restore
+            try {
+                const buffer = fs.readFileSync(backupPath, { length: 16 });
+                const fileHeader = buffer.toString('utf8', 0, 16);
+                if (!fileHeader.startsWith('SQLite format 3')) {
+                    dialog.showErrorBox('Restore Gagal', 'File yang dipilih bukan merupakan file database SQLite yang valid.');
+                    return { success: false, error: 'Invalid file format.' };
+                }
+            } catch (readError) {
+                 dialog.showErrorBox('Restore Gagal', `Tidak dapat membaca file backup: ${readError.message}`);
+                 return { success: false, error: readError.message };
+            }
+
             const confirmation = await dialog.showMessageBox({
                 type: 'warning',
                 buttons: ['Batal', 'Ya, Pulihkan Data'],
@@ -52,8 +66,6 @@ function registerAppHandlers(ipcMain, db) {
             });
             if (confirmation.response === 1) {
                 try {
-                    // Database instance is managed in database.js, so we can't directly close it here.
-                    // The app restart will handle reconnection.
                     fs.copyFileSync(backupPath, dbPath);
                     log.info(`Database restored from ${backupPath}. Relaunching app.`);
                     app.relaunch();

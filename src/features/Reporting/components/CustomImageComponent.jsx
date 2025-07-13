@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/CustomImageComponent.jsx
-// Deskripsi: Komponen untuk menampilkan gambar kustom dengan opsi bingkai.
+// Deskripsi: Komponen gambar dengan kontrol ukuran dan posisi.
 
 import React from 'react';
 import * as api from '../../../api/electronAPI';
@@ -8,7 +8,13 @@ import { Upload } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 const CustomImageComponent = ({ properties, onPropertyChange, instanceId }) => {
-    const { src, hasFrame } = properties || {};
+    // Ekstrak properti dengan nilai default
+    const {
+        src,
+        hasFrame,
+        maxWidth = 100, // dalam persen
+        align = 'center' // left, center, right
+    } = properties || {};
 
     const handleImageUpload = async () => {
         const filePath = await api.openImageDialog();
@@ -18,6 +24,18 @@ const CustomImageComponent = ({ properties, onPropertyChange, instanceId }) => {
                 onPropertyChange(instanceId, 'src', `data:image/png;base64,${base64}`);
             }
         }
+    };
+
+    // Wadah untuk mengatur perataan
+    const wrapperStyle = {
+        display: 'flex',
+        justifyContent: align,
+    };
+
+    // Gaya untuk gambar itu sendiri
+    const imageStyle = {
+        maxWidth: `${maxWidth}%`,
+        height: 'auto',
     };
 
     if (!src) {
@@ -33,11 +51,14 @@ const CustomImageComponent = ({ properties, onPropertyChange, instanceId }) => {
     }
 
     return (
-        <img
-            src={src}
-            alt="Gambar Kustom"
-            className={cn("w-full h-auto", hasFrame && "border-4 p-1 border-gray-200")}
-        />
+        <div style={wrapperStyle}>
+            <img
+                src={src}
+                alt="Gambar Kustom"
+                style={imageStyle}
+                className={cn(hasFrame && "border-4 p-1 border-gray-200")}
+            />
+        </div>
     );
 };
 

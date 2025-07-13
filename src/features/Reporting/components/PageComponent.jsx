@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/PageComponent.jsx
-// Deskripsi: Menambahkan gaya dan dimensi dinamis berdasarkan pengaturan halaman.
+// Deskripsi: Menambahkan handler onClick pada area halaman untuk membatalkan seleksi.
 
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
@@ -8,13 +8,13 @@ import { Button } from '../../../components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
-// Dimensi standar dalam mm
 const PAGE_DIMENSIONS = {
     a4: { width: 210, height: 297 },
     letter: { width: 215.9, height: 279.4 },
 };
 
-const PageComponent = ({ page, pageIndex, onComponentClick, onDeletePage, onDeleteComponent, selectedComponentId, reportData, settings, onPropertyChange, apiReady, pageSettings }) => {
+// PERUBAHAN: Menambahkan prop onDeselect
+const PageComponent = ({ page, pageIndex, onComponentClick, onDeletePage, onDeleteComponent, selectedComponentId, reportData, settings, onPropertyChange, apiReady, pageSettings, onDeselect }) => {
     
     const { size = 'a4', orientation = 'portrait' } = pageSettings || {};
     const dimensions = PAGE_DIMENSIONS[size];
@@ -42,7 +42,9 @@ const PageComponent = ({ page, pageIndex, onComponentClick, onDeletePage, onDele
                     <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        style={pageStyle} // Terapkan dimensi dinamis
+                        style={pageStyle}
+                        // PERUBAHAN: Menambahkan event onClick untuk memanggil fungsi onDeselect
+                        onClick={onDeselect}
                         className={cn(
                             "p-8 bg-white dark:bg-card shadow-lg mx-auto border",
                             snapshot.isDraggingOver && 'bg-primary/5'
