@@ -1,11 +1,15 @@
-import React, { useState, useMemo } from 'react';
+// Lokasi file: src/features/Dashboard/Dashboard.jsx
+// Deskripsi: Penambahan komponen ProjectStatusChart untuk menampilkan KPI.
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useProjects } from '../../hooks/useProjects';
 import { useMaterials } from '../../hooks/useMaterials';
-import { useAllTrials } from '../../hooks/useAllTrials'; // BARU
+import { useAllTrials } from '../../hooks/useAllTrials';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Package, Folder, Clock, Beaker, User, FilterX } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { Package, Folder, Clock, Beaker, User, FilterX, PieChart as PieIcon, Loader2 } from 'lucide-react';
+import * as api from '../../api/electronAPI';
 
 const RecentProjects = ({ projects, onProjectSelect, title = "Proyek Terakhir Dikerjakan" }) => (
     <Card className="shadow-sm hover:shadow-md transition-shadow">
@@ -66,29 +70,24 @@ const MaterialLibrarySummary = ({ materials }) => {
     );
 };
 
-// PERUBAHAN LOGIKA KOMPONEN
 const TrialMixStats = ({ trials, onBarClick }) => {
     const data = useMemo(() => {
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-        
-        // LOGIKA BARU: Gunakan 'trials' bukan 'projects'
         const monthlyData = trials.reduce((acc, trial) => {
-            const monthIndex = new Date(trial.created_at).getMonth(); // Gunakan created_at dari trial
+            const monthIndex = new Date(trial.created_at).getMonth();
             if (!acc[monthIndex]) {
                 acc[monthIndex] = { name: monthNames[monthIndex], monthIndex: monthIndex, trials: 0 };
             }
-            acc[monthIndex].trials += 1; // Ini sekarang benar-benar menghitung trial
+            acc[monthIndex].trials += 1;
             return acc;
         }, {});
-        
         for(let i = 0; i < 12; i++) {
             if (!monthlyData[i]) {
                 monthlyData[i] = { name: monthNames[i], monthIndex: i, trials: 0 };
             }
         }
-        
         return Object.values(monthlyData).sort((a, b) => a.monthIndex - b.monthIndex);
-    }, [trials]); // Dependensi diubah menjadi 'trials'
+    }, [trials]);
 
     return (
         <Card className="shadow-sm hover:shadow-md transition-shadow h-full">
@@ -111,10 +110,61 @@ const TrialMixStats = ({ trials, onBarClick }) => {
     );
 };
 
+// --- KOMPONEN BARU UNTUK KPI ---
+const ProjectStatusChart = ({ apiReady }) => {
+    const [stats, setStats] = useState({ active: 0, archived: 0 });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (apiReady) {
+            api.getProjectStatusCounts().then(data => {
+                setStats(data);
+                setLoading(false);
+            }).catch(err => {
+                console.error("Failed to get project status counts:", err);
+                setLoading(false);
+            });
+        }
+    }, [apiReady]);
+
+    const data = [
+        { name: 'Aktif', value: stats.active || 0 },
+        { name: 'Diarsipkan', value: stats.archived || 0 }
+    ];
+    const COLORS = ['#3b82f6', '#6b7280']; // blue-500, gray-500
+
+    return (
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                    <PieIcon className="mr-3 h-5 w-5 text-primary" /> Status Proyek
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <div className="flex justify-center items-center h-[150px]"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                ) : (
+                    <ResponsiveContainer width="100%" height={150}>
+                        <PieChart>
+                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
     const { projects, loading: projectsLoading } = useProjects(apiReady);
     const { materials, loading: materialsLoading } = useMaterials(apiReady);
-    const { allTrials, loading: trialsLoading } = useAllTrials(apiReady); // Panggil hook baru
+    const { allTrials, loading: trialsLoading } = useAllTrials(apiReady);
     const [filterMonth, setFilterMonth] = useState(null);
 
     const handleBarClick = (data) => {
@@ -137,7 +187,6 @@ export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const filterTitle = filterMonth !== null ? `Proyek di Bulan ${monthNames[filterMonth]}` : "Proyek Terakhir Dikerjakan";
 
-    // Ganti kondisi loading
     if (projectsLoading || materialsLoading || trialsLoading) {
         return <div className="p-6">Memuat data dashboard...</div>;
     }
@@ -158,9 +207,9 @@ export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
                         </Button>
                     )}
                     <MaterialLibrarySummary materials={materials} />
+                    <ProjectStatusChart apiReady={apiReady} />
                 </div>
                 <div>
-                    {/* Ganti prop 'projects' menjadi 'allTrials' */}
                     <TrialMixStats trials={allTrials} onBarClick={handleBarClick} />
                 </div>
             </div>

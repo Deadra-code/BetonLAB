@@ -1,4 +1,4 @@
-// Lokasi file: src/features/MaterialTesting/AggregateBlending.js
+// Lokasi file: src/features/MaterialTesting/AggregateBlending.jsx
 // Deskripsi: Versi lengkap dengan tampilan ringkasan properti campuran secara real-time.
 
 import React, { useState, useMemo } from 'react';

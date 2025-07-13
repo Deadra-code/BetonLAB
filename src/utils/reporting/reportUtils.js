@@ -1,5 +1,5 @@
 // Lokasi file: src/utils/reporting/reportUtils.js
-// Deskripsi: File utilitas terpusat untuk fungsi-fungsi yang digunakan oleh fitur pelaporan.
+// Deskripsi: Menambahkan placeholder baru untuk detail klien dan permohonan.
 
 // Mengganti placeholder dalam teks dengan data yang relevan.
 export const replacePlaceholders = (text, reportData, settings) => {
@@ -8,8 +8,20 @@ export const replacePlaceholders = (text, reportData, settings) => {
     const replacements = {
         '{{nama_proyek}}': reportData?.projectName || '',
         '{{nama_klien}}': reportData?.clientName || '',
+        '{{tanggal_laporan}}': new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'}),
+        
+        // --- DATA PROYEK BARU ---
+        '{{client_address}}': reportData?.clientAddress || '',
+        '{{client_contact_person}}': reportData?.clientContactPerson || '',
+        '{{client_contact_number}}': reportData?.clientContactNumber || '',
+        '{{request_number}}': reportData?.requestNumber || '',
+        '{{request_date}}': reportData?.requestDate ? new Date(reportData.requestDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'}) : '',
+        '{{testing_requests}}': reportData?.testingRequests || '',
+        '{{project_notes}}': reportData?.projectNotes || '',
+        '{{request_letter_path}}': reportData?.requestLetterPath || '',
+
+        // --- DATA TRIAL ---
         '{{nama_trial}}': trialData?.trial_name || '',
-        '{{tanggal_laporan}}': new Date().toLocaleDateString('id-ID'),
         '{{fc}}': trialData?.design_input?.fc || '',
         '{{fcr}}': trialData?.design_result?.fcr?.toFixed(2) || '',
         '{{slump}}': trialData?.design_input?.slump || '',

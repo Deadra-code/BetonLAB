@@ -1,5 +1,5 @@
 // Lokasi file: public/preload.js
-// Deskripsi: Menambahkan 'getAllTrials' ke context bridge.
+// Deskripsi: Mengekspos API baru untuk KPI.
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -11,10 +11,11 @@ contextBridge.exposeInMainWorld('api', {
     deleteProject: (id) => ipcRenderer.invoke('db:delete-project', id),
     setProjectStatus: (data) => ipcRenderer.invoke('db:set-project-status', data),
     duplicateProject: (id) => ipcRenderer.invoke('db:duplicate-project', id),
+    getProjectStatusCounts: () => ipcRenderer.invoke('db:get-project-status-counts'), // BARU
 
     // Trials
     getTrialsForProject: (projectId) => ipcRenderer.invoke('db:get-trials-for-project', projectId),
-    getAllTrials: () => ipcRenderer.invoke('db:get-all-trials'), // BARU
+    getAllTrials: () => ipcRenderer.invoke('db:get-all-trials'),
     addTrial: (trial) => ipcRenderer.invoke('db:add-trial', trial),
     updateTrial: (trial) => ipcRenderer.invoke('db:update-trial', trial),
     deleteTrial: (id) => ipcRenderer.invoke('db:delete-trial', id),
@@ -47,6 +48,7 @@ contextBridge.exposeInMainWorld('api', {
     saveLogoFile: (filePath) => ipcRenderer.invoke('file:save-logo', filePath),
     saveTestImageFile: (filePath) => ipcRenderer.invoke('file:save-test-image', filePath),
     saveReferencePdf: (filePath) => ipcRenderer.invoke('file:save-reference-pdf'),
+    saveRequestLetter: (filePath) => ipcRenderer.invoke('file:save-request-letter', filePath),
     readFileAsBase64: (filePath) => ipcRenderer.invoke('file:read-base64', filePath),
     saveCsv: (data) => ipcRenderer.invoke('file:save-csv', data),
     saveReportAsset: (filePath) => ipcRenderer.invoke('file:save-report-asset', filePath),

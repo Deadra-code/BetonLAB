@@ -1,19 +1,16 @@
-// Lokasi file: src/features/Projects/CompressiveStrengthTest.js
+// Lokasi file: src/features/Projects/CompressiveStrengthTest.jsx
 // Deskripsi: Rombak total alur kerja untuk manajemen benda uji yang lebih cerdas dan akurat.
-// - Mengotomatiskan perhitungan tanggal & umur uji.
-// - Menerapkan validasi input yang ketat.
-// - Menampilkan lebih banyak informasi relevan di tabel utama.
+// Menambahkan header lembar data dan metadata.
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-// PERBAIKAN: Menambahkan DialogFooter ke dalam import
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useConcreteTests } from '../../hooks/useConcreteTests';
-import { Loader2, Hammer, CheckCircle, AlertCircle, Clock, Pencil, Trash2, CalendarDays } from 'lucide-react';
+import { Loader2, Hammer, CheckCircle, AlertCircle, Clock, Pencil, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
 import { SecureDeleteDialog } from '../../components/ui/SecureDeleteDialog';
@@ -25,33 +22,43 @@ const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+// Komponen Header Lembar Data yang Dapat Digunakan Kembali
+const DatasheetHeader = ({ metadata, onMetadataChange }) => (
+    <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50 mb-4">
+        <Input placeholder="Diuji oleh..." value={metadata.testedBy || ''} onChange={e => onMetadataChange('testedBy', e.target.value)} />
+        <Input placeholder="Diperiksa oleh..." value={metadata.checkedBy || ''} onChange={e => onMetadataChange('checkedBy', e.target.value)} />
+        <Input placeholder="Metode Uji (e.g., SNI 1974:2011)" value={metadata.testMethod || ''} onChange={e => onMetadataChange('testMethod', e.target.value)} />
+        <Input type="date" value={metadata.testDate || ''} onChange={e => onMetadataChange('testDate', e.target.value)} />
+    </div>
+);
+
 // --- PEROMBAKAN TOTAL: SpecimenForm ---
 const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // State default untuk form tambah baru
     const defaultState = {
         specimen_id: '',
         casting_date: new Date().toISOString().split('T')[0],
-        planned_age_days: '7', // Umur rencana
+        planned_age_days: '7',
         diameter: '150',
         max_load: '',
         specimen_shape: 'Silinder',
         curing_method: 'Perendaman Air',
-        // 'testing_date' dan 'status' akan dihitung secara dinamis
+        testedBy: '',
+        checkedBy: '',
+        testMethod: 'SNI 1974:2011',
     };
     
     const [inputData, setInputData] = useState(defaultState);
 
-    // Efek untuk mengisi form saat mode edit atau mereset saat dialog dibuka
     useEffect(() => {
         if (isOpen) {
             if (isEditing && initialData) {
                 setInputData({
                     ...defaultState,
                     ...initialData,
-                    planned_age_days: initialData.age_days, // Gunakan umur dari DB sebagai umur rencana
+                    planned_age_days: initialData.age_days,
                     ...initialData.input_data,
                 });
             } else {
@@ -60,7 +67,6 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
         }
     }, [isOpen, isEditing, initialData]);
 
-    // Kalkulasi dinamis berdasarkan input
     const derivedValues = useMemo(() => {
         const plannedAge = parseInt(inputData.planned_age_days, 10);
         let plannedTestDate = '';
@@ -69,7 +75,6 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
             date.setDate(date.getDate() + plannedAge);
             plannedTestDate = date.toISOString().split('T')[0];
         }
-
         const diameter = parseFloat(inputData.diameter);
         const maxLoad = parseFloat(inputData.max_load);
         let strength_MPa = null;
@@ -77,11 +82,9 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
             const area = Math.PI * Math.pow(diameter / 2, 2);
             strength_MPa = (maxLoad * 1000) / area;
         }
-
         return { plannedTestDate, strength_MPa };
     }, [inputData.casting_date, inputData.planned_age_days, inputData.diameter, inputData.max_load]);
     
-    // Validasi input yang ketat
     const validation = useMemo(() => {
         const errors = {};
         if (!inputData.specimen_id.trim()) errors.specimen_id = 'ID Benda Uji harus diisi.';
@@ -98,20 +101,20 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
         const hasTestData = !!(inputData.max_load && parseFloat(inputData.max_load) > 0);
         
         const payload = {
-            ...initialData, // Sertakan data awal jika edit
+            ...initialData,
             specimen_id: inputData.specimen_id,
             casting_date: inputData.casting_date,
-            age_days: parseInt(inputData.planned_age_days, 10), // Simpan umur rencana
-            testing_date: hasTestData ? new Date().toISOString().split('T')[0] : derivedValues.plannedTestDate, // Gunakan tanggal aktual jika diuji
+            age_days: parseInt(inputData.planned_age_days, 10),
+            testing_date: hasTestData ? new Date().toISOString().split('T')[0] : derivedValues.plannedTestDate,
             specimen_shape: inputData.specimen_shape,
             curing_method: inputData.curing_method,
             test_type: 'compressive_strength',
-            input_data_json: JSON.stringify({
-                diameter: inputData.diameter,
-                max_load: inputData.max_load || null,
-            }),
+            input_data_json: JSON.stringify({ diameter: inputData.diameter, max_load: inputData.max_load || null }),
             result_data_json: JSON.stringify(hasTestData ? { strength_MPa: derivedValues.strength_MPa } : {}),
             status: hasTestData ? 'Telah Diuji' : 'Dalam Perawatan',
+            testedBy: inputData.testedBy,
+            checkedBy: inputData.checkedBy,
+            testMethod: inputData.testMethod,
         };
 
         try {
@@ -131,15 +134,17 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
                     <Button>Tambah Benda Uji</Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="max-w-xl">
+            <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? 'Edit Benda Uji' : 'Tambah Benda Uji Baru'}</DialogTitle>
-                    <DialogDescription>
-                        Masukkan detail perencanaan. Hasil pengujian dapat diisi nanti dengan mengedit data ini.
-                    </DialogDescription>
+                    <DialogTitle>{isEditing ? 'Edit Lembar Data Uji Tekan' : 'Lembar Data Uji Tekan Baru'}</DialogTitle>
                 </DialogHeader>
+                <DatasheetHeader metadata={{
+                    testedBy: inputData.testedBy,
+                    checkedBy: inputData.checkedBy,
+                    testMethod: inputData.testMethod,
+                    testDate: inputData.testing_date || derivedValues.plannedTestDate
+                }} onMetadataChange={(field, value) => setInputData(prev => ({...prev, [field]: value}))} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 py-4">
-                    {/* Kolom Kiri: Perencanaan */}
                     <div className="space-y-3">
                         <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">Perencanaan</h4>
                         <div>
@@ -161,8 +166,6 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
                             <Input type="date" value={derivedValues.plannedTestDate} readOnly className="bg-muted/50" />
                         </div>
                     </div>
-
-                    {/* Kolom Kanan: Properti & Hasil */}
                     <div className="space-y-3">
                         <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">Properti & Hasil</h4>
                         <div>
@@ -189,6 +192,7 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
                     </div>
                 </div>
                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Batal</Button>
                     <Button onClick={handleSave} disabled={!validation.isValid || isSaving}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Simpan
@@ -254,7 +258,7 @@ export default function CompressiveStrengthTest({ trial, chartRef }) {
 
             <div className="flex justify-between items-center mt-6 mb-4">
                 <h3 className="font-semibold">Manajemen Benda Uji</h3>
-                <SpecimenForm onSave={isEditing => isEditing ? updateTest : addTest} />
+                <SpecimenForm onSave={addTest} />
             </div>
             {tests.length === 0 ? (
                  <div className="text-center py-10 border-2 border-dashed rounded-lg">

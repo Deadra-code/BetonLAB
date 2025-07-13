@@ -1,22 +1,19 @@
-// ========================================================================
 // Lokasi file: src/features/Reporting/reportComponents.jsx
-// Perbaikan: Mengubah path impor `reportUtils` menjadi path relatif yang benar
-// ========================================================================
+// Deskripsi: Mendaftarkan komponen 'Info Kontak Klien' yang baru.
+
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import {
     FileText, Columns3, BarChart2, PenLine, Type, ChevronsUpDown, Minus,
     Image as ImageIcon, GripVertical, Heading1, Heading2, Box, Repeat,
-    ListChecks, AreaChart, TableProperties, Info, ArrowUpDown, Table, Code
+    ListChecks, AreaChart, TableProperties, Info, ArrowUpDown, Table, Code, Contact
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/button';
 import { Trash2 } from 'lucide-react';
+import { checkConditions } from '../../utils/reporting/reportUtils.js';
 
-// Impor fungsi utilitas terpusat
-import { checkConditions } from '../../utils/reporting/reportUtils.js'; // <-- PERBAIKAN DI SINI
-
-// Impor komponen render yang sebenarnya
+// Impor semua komponen render
 import HeaderComponent from './components/HeaderComponent.jsx';
 import JmdTableComponent from './components/JmdTableComponent.jsx';
 import CustomTextComponent from './components/CustomTextComponent.jsx';
@@ -33,6 +30,7 @@ import TrialInfoBlock from './components/TrialInfoBlock.jsx';
 import VerticalSpacer from './components/VerticalSpacer.jsx';
 import CustomTableComponent from './components/CustomTableComponent.jsx';
 import ScriptBlockComponent from './components/ScriptBlockComponent.jsx';
+import ClientInfoBlock from './components/ClientInfoBlock.jsx'; // BARU
 
 const PlaceholderComponent = ({ name }) => <div className="p-4 text-center text-muted-foreground border-2 border-dashed">{name}</div>;
 
@@ -55,6 +53,7 @@ export const AVAILABLE_COMPONENTS = [
             { id: 'header', name: 'Kop Surat Perusahaan', icon: <Heading1 size={16}/>, type: 'data' },
             { id: 'project-name', name: 'Nama Proyek', icon: <FileText size={16}/>, type: 'data' },
             { id: 'client-name', name: 'Nama Klien', icon: <FileText size={16}/>, type: 'data' },
+            { id: 'client-info-block', name: 'Info Kontak Klien', icon: <Contact size={16}/>, type: 'data' }, // BARU
             { id: 'trial-info-block', name: 'Info Trial Mix', icon: <Info size={16}/>, type: 'data' },
             { id: 'jmd-table', name: 'Tabel Job Mix', icon: <Columns3 size={16}/>, type: 'data' },
             { id: 'material-properties-table', name: 'Tabel Properti Material', icon: <ListChecks size={16}/>, type: 'data' },
@@ -122,10 +121,11 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
             case 'combined-gradation-chart': return <CombinedGradationChart trialData={trialData} properties={properties} apiReady={apiReady} />;
             case 'strength-summary-table': return <StrengthSummaryTable trialData={trialData} properties={properties} />;
             case 'trial-info-block': return <TrialInfoBlock trialData={trialData} properties={properties} />;
+            case 'client-info-block': return <ClientInfoBlock reportData={reportData} />; // BARU
             case 'vertical-spacer': return <VerticalSpacer properties={properties} />;
             case 'script-block': return <ScriptBlockComponent properties={properties} trialData={trialData} />;
             case 'trial-loop':
-                 return <TrialLoopingSection component={component} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onComponentClick={onClick} isSelected={isSelected} onDeleteComponent={onDeleteComponent} apiReady={apiReady} />;
+                 return <TrialLoopingSection component={component} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onComponentClick={onClick} selectedComponentId={isSelected} onDeleteComponent={onDeleteComponent} apiReady={apiReady} />;
             
             case 'section':
                 return (
@@ -133,11 +133,11 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
                         {(provided, snapshot) => (
                             <div ref={provided.innerRef} {...provided.droppableProps} className={cn("p-4 border border-dashed border-gray-300 rounded-md min-h-[100px]", snapshot.isDraggingOver && "bg-blue-100")}>
                                 {component.children.length === 0 && <p className="text-xs text-center text-muted-foreground">Area Bagian (Seret komponen ke sini)</p>}
-                                {component.children.map((child) => (
-                                    <Draggable key={child.instanceId} draggableId={child.instanceId} index={component.children.indexOf(child)}>
+                                {component.children.map((child, index) => (
+                                    <Draggable key={child.instanceId} draggableId={child.instanceId} index={index}>
                                         {(provided) => (
                                             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="relative group">
-                                                <CanvasComponent component={child} isSelected={isSelected} onClick={onClick} {...{ reportData, settings, onPropertyChange, onDeleteComponent, apiReady }} />
+                                                <CanvasComponent component={child} isSelected={isSelected} onClick={onClick} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onDeleteComponent={onDeleteComponent} apiReady={apiReady} />
                                                 <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 z-10" onClick={(e) => { e.stopPropagation(); onDeleteComponent(child.instanceId); }}><Trash2 size={12} /></Button>
                                             </div>
                                         )}
@@ -152,10 +152,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
             case 'columns-2':
             case 'columns-3':
                 const numColumns = component.id === 'columns-3' ? 3 : 2;
-                const gridClassMap = {
-                    2: 'grid-cols-2',
-                    3: 'grid-cols-3',
-                };
+                const gridClassMap = { 2: 'grid-cols-2', 3: 'grid-cols-3' };
                 return (
                     <div className={cn('grid gap-4', gridClassMap[numColumns])}>
                         {[...Array(numColumns).keys()].map(colIndex => (
@@ -164,11 +161,11 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
                                     {(provided, snapshot) => (
                                         <div ref={provided.innerRef} {...provided.droppableProps} className={cn("p-2 border border-dashed border-gray-300 rounded-md min-h-[100px]", snapshot.isDraggingOver ? "bg-blue-100" : "bg-gray-50 dark:bg-gray-800/50")}>
                                             {(!component.children[colIndex] || component.children[colIndex].length === 0) && <p className="text-xs text-center text-muted-foreground">Kolom {colIndex + 1}</p>}
-                                            {component.children[colIndex] && component.children[colIndex].map((child) => (
-                                                 <Draggable key={child.instanceId} draggableId={child.instanceId} index={component.children[colIndex].indexOf(child)}>
+                                            {component.children[colIndex] && component.children[colIndex].map((child, index) => (
+                                                 <Draggable key={child.instanceId} draggableId={child.instanceId} index={index}>
                                                      {(provided) => (
                                                          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="relative group">
-                                                             <CanvasComponent component={child} isSelected={isSelected} onClick={onClick} {...{ reportData, settings, onPropertyChange, onDeleteComponent, apiReady }}/>
+                                                             <CanvasComponent component={child} isSelected={isSelected} onClick={onClick} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onDeleteComponent={onDeleteComponent} apiReady={apiReady}/>
                                                              <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 z-10" onClick={(e) => { e.stopPropagation(); onDeleteComponent(child.instanceId); }}><Trash2 size={12} /></Button>
                                                          </div>
                                                      )}

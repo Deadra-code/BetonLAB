@@ -1,5 +1,5 @@
 // Lokasi file: src/electron/ipcHandlers/fileHandlers.js
-// Deskripsi: Versi lengkap dengan implementasi untuk menyimpan, mendaftar, dan menghapus aset laporan.
+// Deskripsi: Penambahan handler untuk menyimpan file surat permohonan.
 
 const { app, dialog, shell } = require('electron');
 const path = require('path');
@@ -7,7 +7,6 @@ const fs = require('fs');
 const log = require('electron-log');
 
 function registerFileHandlers(ipcMain, db) {
-    // Handler yang sudah ada
     ipcMain.handle('dialog:open-image', async () => {
         const { canceled, filePaths } = await dialog.showOpenDialog({
             properties: ['openFile'],
@@ -85,7 +84,19 @@ function registerFileHandlers(ipcMain, db) {
         }
     });
 
-    // --- BARU: Handler untuk Manajemen Aset Laporan ---
+    // --- BARU: Handler untuk menyimpan surat permohonan ---
+    ipcMain.handle('file:save-request-letter', async (event, filePath) => {
+        const userDataPath = app.getPath('userData');
+        const letterDir = path.join(userDataPath, 'request_letters');
+        if (!fs.existsSync(letterDir)) {
+            fs.mkdirSync(letterDir, { recursive: true });
+        }
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const newPath = path.join(letterDir, uniqueSuffix + '-' + path.basename(filePath));
+        fs.copyFileSync(filePath, newPath);
+        log.info(`Request letter saved: ${newPath}`);
+        return newPath;
+    });
 
     const getAssetsDir = () => {
         const userDataPath = app.getPath('userData');
@@ -96,7 +107,6 @@ function registerFileHandlers(ipcMain, db) {
         return assetsDir;
     };
 
-    // Menyimpan file aset yang diunggah
     ipcMain.handle('file:save-report-asset', async (event, filePath) => {
         const assetsDir = getAssetsDir();
         const fileName = path.basename(filePath);
@@ -111,7 +121,6 @@ function registerFileHandlers(ipcMain, db) {
         return newPath;
     });
 
-    // Mendapatkan daftar semua aset yang tersimpan
     ipcMain.handle('file:list-report-assets', async () => {
         const assetsDir = getAssetsDir();
         const files = fs.readdirSync(assetsDir);
@@ -121,7 +130,6 @@ function registerFileHandlers(ipcMain, db) {
         }));
     });
 
-    // Menghapus file aset
     ipcMain.handle('file:delete-report-asset', async (event, filePath) => {
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);

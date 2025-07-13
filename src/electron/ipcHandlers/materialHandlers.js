@@ -1,6 +1,6 @@
 // Lokasi file: src/electron/ipcHandlers/materialHandlers.js
-// Deskripsi: Versi lengkap dengan semua handler untuk material dan tesnya,
-// serta penambahan pemeriksaan dependensi sebelum menghapus material.
+// Deskripsi: Versi lengkap dengan semua handler untuk material dan tesnya.
+// Diperbarui untuk menyertakan metadata lembar data pada 'addMaterialTest'.
 
 const log = require('electron-log');
 
@@ -133,12 +133,21 @@ function registerMaterialHandlers(ipcMain, db) {
 
     // Menambah data tes material baru
     ipcMain.handle('db:add-material-test', async (event, test) => new Promise((resolve, reject) => {
-        const stmt = db.prepare("INSERT INTO material_tests (material_id, test_type, test_date, input_data_json, result_data_json, image_path) VALUES (?, ?, ?, ?, ?, ?)");
-        stmt.run(test.material_id, test.test_type, test.test_date, test.input_data_json, test.result_data_json, test.image_path || null, function(err) {
-            if (handleDbError(err, reject, { operation: 'addMaterialTest', materialId: test.material_id })) return;
-            log.info(`Material test added for material ID: ${test.material_id}. Test ID: ${this.lastID}`);
-            resolve({ id: this.lastID, ...test });
-        });
+        const stmt = db.prepare(`INSERT INTO material_tests (
+            material_id, test_type, test_date, input_data_json, result_data_json, image_path,
+            testedBy, checkedBy, testMethod
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+        
+        stmt.run(
+            test.material_id, test.test_type, test.test_date, 
+            test.input_data_json, test.result_data_json, test.image_path || null,
+            test.testedBy || '', test.checkedBy || '', test.testMethod || '', // Field baru
+            function(err) {
+                if (handleDbError(err, reject, { operation: 'addMaterialTest', materialId: test.material_id })) return;
+                log.info(`Material test added for material ID: ${test.material_id}. Test ID: ${this.lastID}`);
+                resolve({ id: this.lastID, ...test });
+            }
+        );
         stmt.finalize();
     }));
 

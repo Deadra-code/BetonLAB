@@ -1,5 +1,5 @@
 // Lokasi file: src/api/electronAPI.js
-// Deskripsi: Menambahkan fungsi 'getAllTrials' untuk dasbor.
+// Deskripsi: Menambahkan fungsi pembungkus untuk API KPI.
 
 const isApiReady = () => {
     if (window.api) return true;
@@ -14,10 +14,11 @@ export const updateProject = (project) => isApiReady() ? window.api.updateProjec
 export const deleteProject = (id) => isApiReady() ? window.api.deleteProject(id) : Promise.reject(new Error("API not ready"));
 export const setProjectStatus = (data) => isApiReady() ? window.api.setProjectStatus(data) : Promise.reject(new Error("API not ready"));
 export const duplicateProject = (id) => isApiReady() ? window.api.duplicateProject(id) : Promise.reject(new Error("API not ready"));
+export const getProjectStatusCounts = () => isApiReady() ? window.api.getProjectStatusCounts() : Promise.resolve({ active: 0, archived: 0 }); // BARU
 
 // Trials
 export const getTrialsForProject = (projectId) => isApiReady() ? window.api.getTrialsForProject(projectId) : Promise.resolve([]);
-export const getAllTrials = () => isApiReady() ? window.api.getAllTrials() : Promise.resolve([]); // BARU
+export const getAllTrials = () => isApiReady() ? window.api.getAllTrials() : Promise.resolve([]);
 export const addTrial = (trial) => isApiReady() ? window.api.addTrial(trial) : Promise.reject(new Error("API not ready"));
 export const updateTrial = (trial) => isApiReady() ? window.api.updateTrial(trial) : Promise.reject(new Error("API not ready"));
 export const deleteTrial = (id) => isApiReady() ? window.api.deleteTrial(id) : Promise.reject(new Error("API not ready"));
@@ -50,6 +51,7 @@ export const openPdfDialog = () => isApiReady() ? window.api.openPdfDialog() : P
 export const saveLogoFile = (filePath) => isApiReady() ? window.api.saveLogoFile(filePath) : Promise.reject(new Error("API not ready"));
 export const saveTestImageFile = (filePath) => isApiReady() ? window.api.saveTestImageFile(filePath) : Promise.reject(new Error("API not ready"));
 export const saveReferencePdf = (filePath) => isApiReady() ? window.api.saveReferencePdf(filePath) : Promise.reject(new Error("API not ready"));
+export const saveRequestLetter = (filePath) => isApiReady() ? window.api.saveRequestLetter(filePath) : Promise.reject(new Error("API not ready"));
 export const readFileAsBase64 = (filePath) => isApiReady() ? window.api.readFileAsBase64(filePath) : Promise.resolve(null);
 export const saveCsv = (data) => isApiReady() ? window.api.saveCsv(data) : Promise.reject(new Error("API not ready"));
 export const saveReportAsset = (filePath) => isApiReady() ? window.api.saveReportAsset(filePath) : Promise.reject(new Error("API not ready"));
