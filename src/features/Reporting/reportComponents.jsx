@@ -1,6 +1,4 @@
-// Lokasi file: src/features/Reporting/reportComponents.jsx
-// Deskripsi: Versi final dengan komponen baru, penghapusan Blok Skrip, dan logika render yang diperbarui.
-
+// src/features/Reporting/reportComponents.jsx
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import {
@@ -31,7 +29,6 @@ import TrialInfoBlock from './components/TrialInfoBlock.jsx';
 import VerticalSpacer from './components/VerticalSpacer.jsx';
 import CustomTableComponent from './components/CustomTableComponent.jsx';
 import ClientInfoBlock from './components/ClientInfoBlock.jsx';
-// Impor komponen baru
 import FooterComponent from './components/FooterComponent.jsx';
 import DynamicPlaceholderComponent from './components/DynamicPlaceholderComponent.jsx';
 import QrCodeComponent from './components/QrCodeComponent.jsx';
@@ -39,14 +36,14 @@ import QrCodeComponent from './components/QrCodeComponent.jsx';
 
 const PlaceholderComponent = ({ name }) => <div className="p-4 text-center text-muted-foreground border-2 border-dashed">{name}</div>;
 
-// PERUBAHAN: Daftar komponen diperbarui
+// --- PERUBAHAN: Daftar komponen diperbarui ---
+// '2 Kolom' dan '3 Kolom' diganti dengan satu komponen 'Kolom'
 export const AVAILABLE_COMPONENTS = [
     {
         group: 'Struktur & Layout',
         items: [
             { id: 'section', name: 'Bagian', icon: <Box size={16}/>, type: 'layout', children: [] },
-            { id: 'columns-2', name: '2 Kolom', icon: <Columns3 size={16}/>, type: 'layout', children: [[], []] },
-            { id: 'columns-3', name: '3 Kolom', icon: <Columns3 size={16}/>, type: 'layout', children: [[], [], []] },
+            { id: 'columns', name: 'Kolom', icon: <Columns3 size={16}/>, type: 'layout', children: [[], []], properties: { columnCount: 2 } },
             { id: 'horizontal-line', name: 'Garis Horizontal', icon: <Minus size={16}/>, type: 'layout' },
             { id: 'vertical-spacer', name: 'Spasi Vertikal', icon: <ArrowUpDown size={16}/>, type: 'layout' },
             { id: 'page-break', name: 'Pemisah Halaman', icon: <ChevronsUpDown size={16}/>, type: 'layout' },
@@ -118,7 +115,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
         }
 
         switch (component.id) {
-            // Komponen Data
+            // ... (semua case komponen lain tetap sama) ...
             case 'header': return <HeaderComponent settings={settings} properties={properties} />;
             case 'client-info-block': return <ClientInfoBlock reportData={reportData} properties={properties} />;
             case 'trial-info-block': return <TrialInfoBlock trialData={trialData} properties={properties} />;
@@ -129,16 +126,12 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
             case 'strength-chart': return <StrengthChartComponent trialData={trialData} properties={properties} />;
             case 'sqc-chart': return <SqcChartComponent trialData={trialData} properties={properties} />;
             case 'combined-gradation-chart': return <CombinedGradationChart trialData={trialData} properties={properties} apiReady={apiReady} />;
-            
-            // Elemen Statis & Dinamis
             case 'custom-text': return <CustomTextComponent properties={properties} />;
             case 'dynamic-placeholder': return <DynamicPlaceholderComponent properties={properties} reportData={reportData} settings={settings} />;
             case 'custom-table': return <CustomTableComponent properties={properties} />;
             case 'custom-image': return <CustomImageComponent properties={properties} instanceId={component.instanceId} onPropertyChange={onPropertyChange} />;
             case 'qr-code': return <QrCodeComponent properties={properties} reportData={reportData} settings={settings} />;
             case 'signature-block': return <SignatureBlock properties={properties} />;
-            
-            // Struktur & Layout
             case 'horizontal-line': return <hr style={{ borderWidth: properties.thickness || 1, borderColor: properties.color || '#9CA3AF', borderStyle: properties.style || 'solid', width: `${properties.width || 100}%`, margin: 'auto' }} />;
             case 'vertical-spacer': return <VerticalSpacer properties={properties} />;
             case 'footer': return <FooterComponent properties={properties} />;
@@ -146,7 +139,6 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
                  return <TrialLoopingSection component={component} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onComponentClick={onClick} selectedComponentId={isSelected} onDeleteComponent={onDeleteComponent} apiReady={apiReady} />;
             
             case 'section':
-                // Implementasi render untuk 'section'
                 return (
                     <Droppable droppableId={component.instanceId}>
                         {(provided, snapshot) => (
@@ -168,11 +160,10 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
                     </Droppable>
                 );
 
-            case 'columns-2':
-            case 'columns-3':
-                // Implementasi render untuk kolom
-                const numColumns = component.id === 'columns-3' ? 3 : 2;
-                const gridClassMap = { 2: 'grid-cols-2', 3: 'grid-cols-3' };
+            // --- PERUBAHAN: Logika render kolom yang dinamis ---
+            case 'columns':
+                const numColumns = component.properties?.columnCount || 2;
+                const gridClassMap = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' };
                 return (
                     <div className={cn('grid gap-4', gridClassMap[numColumns])}>
                         {[...Array(numColumns).keys()].map(colIndex => (

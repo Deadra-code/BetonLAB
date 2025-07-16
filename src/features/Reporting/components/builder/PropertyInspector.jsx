@@ -1,6 +1,4 @@
-// Lokasi file: src/features/Reporting/components/builder/PropertyInspector.jsx
-// Deskripsi: Fase 1 Diterapkan - Menambahkan kontrol untuk properti umum dan komponen grafik.
-
+// src/features/Reporting/components/builder/PropertyInspector.jsx
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { ScrollArea } from '../../../../components/ui/scroll-area';
@@ -71,6 +69,7 @@ const ComponentPropertiesPanel = ({ component, onPropertyChange, reportData }) =
 
     const renderSpecificProperties = () => {
         switch (component.id) {
+            // ... (semua case komponen lain tetap sama) ...
             case 'custom-text':
                 return (
                     <div className="space-y-4">
@@ -84,6 +83,26 @@ const ComponentPropertiesPanel = ({ component, onPropertyChange, reportData }) =
                         <div><Label>Perataan</Label><div className="flex gap-1 mt-1"><Button variant={properties.align === 'left' ? "secondary" : "outline"} size="icon" onClick={() => handleChange('align', 'left')}><AlignLeft size={16}/></Button><Button variant={properties.align === 'center' ? "secondary" : "outline"} size="icon" onClick={() => handleChange('align', 'center')}><AlignCenter size={16}/></Button><Button variant={properties.align === 'right' ? "secondary" : "outline"} size="icon" onClick={() => handleChange('align', 'right')}><AlignRight size={16}/></Button><Button variant={properties.align === 'justify' ? "secondary" : "outline"} size="icon" onClick={() => handleChange('align', 'justify')}><AlignJustify size={16}/></Button></div></div>
                     </div>
                 );
+            
+            // --- PERUBAHAN: Menambahkan case untuk komponen 'columns' ---
+            case 'columns':
+                return (
+                    <div className="space-y-4">
+                        <div>
+                            <Label>Jumlah Kolom</Label>
+                            <Input 
+                                type="number" 
+                                min="1" 
+                                max="4" 
+                                value={properties.columnCount || 2} 
+                                onChange={e => handleChange('columnCount', parseInt(e.target.value))} 
+                            />
+                             <p className="text-xs text-muted-foreground mt-1">Ubah antara 1 hingga 4 kolom.</p>
+                        </div>
+                    </div>
+                );
+
+            // ... (case untuk komponen lain tetap sama) ...
             case 'jmd-table':
             case 'material-properties-table':
             case 'raw-strength-table':
@@ -111,7 +130,6 @@ const ComponentPropertiesPanel = ({ component, onPropertyChange, reportData }) =
                         <div><Label>Sub-judul</Label><Input value={properties.subtitle || ''} onChange={e => handleChange('subtitle', e.target.value)} /></div>
                         <div className="flex items-center space-x-2"><Checkbox id="showLegend" checked={properties.showLegend ?? true} onCheckedChange={c => handleChange('showLegend', c)} /><Label htmlFor="showLegend">Tampilkan Legenda</Label></div>
                         <div className="flex items-center space-x-2"><Checkbox id="showGrid" checked={properties.showGrid ?? true} onCheckedChange={c => handleChange('showGrid', c)} /><Label htmlFor="showGrid">Tampilkan Grid Latar</Label></div>
-                        {/* PENERAPAN LANGKAH 1.3 */}
                         <div className="flex items-center space-x-2"><Checkbox id="showDataLabels" checked={properties.showDataLabels ?? false} onCheckedChange={c => handleChange('showDataLabels', c)} /><Label htmlFor="showDataLabels">Tampilkan Label Nilai</Label></div>
                         <div><Label>Warna Garis Utama</Label><Input type="color" value={properties.lineColor || '#16a34a'} onChange={e => handleChange('lineColor', e.target.value)} className="p-1 h-10 w-full" /></div>
                         <Collapsible><CollapsibleTrigger className="font-semibold text-sm w-full text-left">Styling Sumbu</CollapsibleTrigger>
@@ -126,7 +144,6 @@ const ComponentPropertiesPanel = ({ component, onPropertyChange, reportData }) =
                 const sigCols = Array.from({ length: properties.columnCount || 2 }, (_, i) => i);
                 return (
                     <div className="space-y-3">
-                        {/* PENERAPAN LANGKAH 1.2 */}
                         <div><Label>Ukuran Font Global (pt)</Label><Input type="number" value={properties.fontSize || 10} onChange={e => handleChange('fontSize', parseInt(e.target.value))} /></div>
                         <div><Label>Spasi Vertikal (px)</Label><Input type="number" value={properties.verticalSpacing || 48} onChange={e => handleChange('verticalSpacing', parseInt(e.target.value))} /></div>
                         <hr/>
@@ -144,10 +161,8 @@ const ComponentPropertiesPanel = ({ component, onPropertyChange, reportData }) =
             case 'custom-table':
                 return(
                     <div className="space-y-4">
-                        {/* PENERAPAN LANGKAH 1.2 */}
                         <div className="flex items-center space-x-2"><Checkbox id="isHeaderFirstRow" checked={properties.isHeaderFirstRow ?? true} onCheckedChange={c => handleChange('isHeaderFirstRow', c)} /><Label htmlFor="isHeaderFirstRow">Baris pertama adalah Header</Label></div>
                         <hr/>
-                        {/* Kontrol lain untuk tabel kustom bisa ditambahkan di sini */}
                         <p className="text-xs text-muted-foreground">Gunakan tab "Tampilan" untuk mengatur gaya tabel.</p>
                     </div>
                 );

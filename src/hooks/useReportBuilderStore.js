@@ -1,6 +1,4 @@
-// Lokasi file: src/hooks/useReportBuilderStore.js
-// Deskripsi: Perbaikan kritis pada fungsi updateProperty untuk menangani properti bersarang.
-
+// src/hooks/useReportBuilderStore.js
 import { create } from 'zustand';
 import { produce } from 'immer';
 import { temporal } from 'zundo';
@@ -12,7 +10,6 @@ const setNestedValue = (obj, path, value) => {
     let current = obj;
     for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
-        // Buat objek baru jika path tidak ada
         if (current[key] === undefined || typeof current[key] !== 'object' || current[key] === null) {
             current[key] = {};
         }
@@ -56,18 +53,19 @@ const storeLogic = (set, get) => ({
         }
     })),
 
-    // PERBAIKAN KUNCI: Menggunakan helper 'setNestedValue'
     updateProperty: (instanceId, propPath, value) => set(produce(draft => {
+        let componentToUpdate = null;
         const findAndUpdate = (nodes) => {
             for (let i = 0; i < nodes.length; i++) {
                 const component = nodes[i];
                 if (component.instanceId === instanceId) {
+                    componentToUpdate = component;
                     setNestedValue(component, propPath, value);
                     return true;
                 }
                 if (component.children && Array.isArray(component.children)) {
-                    if (component.id.startsWith('columns-')) {
-                        for (const col of component.children) { if (findAndUpdate(col)) return true; }
+                    if (component.id === 'columns') {
+                         for (const col of component.children) { if (findAndUpdate(col)) return true; }
                     } else {
                         if (findAndUpdate(component.children)) return true;
                     }
@@ -76,6 +74,23 @@ const storeLogic = (set, get) => ({
             return false;
         };
         for (const page of draft.layout) { if (findAndUpdate(page)) break; }
+
+        if (componentToUpdate && componentToUpdate.id === 'columns' && propPath === 'properties.columnCount') {
+            const newCount = parseInt(value) || 1;
+            const currentCount = componentToUpdate.children.length;
+
+            if (newCount > currentCount) {
+                for (let i = 0; i < newCount - currentCount; i++) {
+                    componentToUpdate.children.push([]);
+                }
+            } else if (newCount < currentCount) {
+                const itemsToMove = componentToUpdate.children.slice(newCount).flat();
+                componentToUpdate.children = componentToUpdate.children.slice(0, newCount);
+                if(componentToUpdate.children[newCount-1]) {
+                    componentToUpdate.children[newCount - 1].push(...itemsToMove);
+                }
+            }
+        }
     })),
     
     deleteComponent: (instanceIdToDelete) => set(produce(draft => {
@@ -86,7 +101,7 @@ const storeLogic = (set, get) => ({
                     return true;
                 }
                 if (nodes[i].children && Array.isArray(nodes[i].children)) {
-                    if (nodes[i].id.startsWith('columns-')) {
+                    if (nodes[i].id === 'columns') {
                         for (const col of nodes[i].children) { if (removeById(col)) return true; }
                     } else {
                         if (removeById(nodes[i].children)) return true;
@@ -98,46 +113,76 @@ const storeLogic = (set, get) => ({
         for (const page of draft.layout) { if (removeById(page)) break; }
         if (draft.selectedComponentId === instanceIdToDelete) { draft.selectedComponentId = null; }
     })),
+    
+    // ========================================================================
+    // PERBAIKAN LOGIKA DRAG & DROP
+    // ========================================================================
     onDragEnd: (result) => {
         const { source, destination } = result;
         if (!destination) return;
+
         set(produce(draft => {
-            const findContainer = (nodes, id) => {
+            const findContainerById = (nodes, droppableId) => {
                 for (const node of nodes) {
-                    if (node.instanceId === id && Array.isArray(node.children)) return node.children;
-                    if (node.id === 'trial-loop' && `loop-${node.instanceId}` === id) return node.children;
-                    if (node.id.startsWith('columns-') && id.startsWith(node.instanceId)) {
-                        const colIndex = parseInt(id.split('-col-')[1]);
-                        return node.children[colIndex];
-                    }
-                    if (node.children && Array.isArray(node.children)) {
-                        if (node.id.startsWith('columns-')) {
-                            for (const col of node.children) { const found = findContainer(col, id); if (found) return found; }
-                        } else {
-                            const found = findContainer(node.children, id); if (found) return found;
+                    if (node.instanceId === droppableId) return node.children;
+                    if (node.id === 'trial-loop' && `loop-${node.instanceId}` === droppableId) return node.children;
+                    
+                    if (node.id === 'columns' && droppableId.startsWith(node.instanceId)) {
+                        const colIndex = parseInt(droppableId.split('-col-')[1]);
+                        if (Array.isArray(node.children) && node.children[colIndex] !== undefined) {
+                            return node.children[colIndex];
                         }
+                    }
+
+                    if (Array.isArray(node.children)) {
+                        const found = findContainerById(node.children, droppableId);
+                        if (found) return found;
                     }
                 }
                 return null;
             };
-            const findTopLevel = (pages, id) => {
-                if (id.startsWith('page-')) return pages[parseInt(id.split('-')[1])];
-                for (const page of pages) { const found = findContainer(page, id); if (found) return found; }
+            
+            const findTargetContainer = (pages, id) => {
+                if (id.startsWith('page-')) {
+                    const pageIndex = parseInt(id.split('-')[1]);
+                    return pages[pageIndex];
+                }
+                for (const page of pages) {
+                    const found = findContainerById(page, id);
+                    if (found) return found;
+                }
                 return null;
             };
+
             let movedItem;
             if (source.droppableId.startsWith('library-group')) {
                 const groupIndex = parseInt(source.droppableId.split('-')[2]);
                 const itemIndex = source.index;
                 const componentToClone = AVAILABLE_COMPONENTS[groupIndex].items[itemIndex];
-                movedItem = { ...componentToClone, instanceId: `${componentToClone.id}-${Date.now()}`, children: componentToClone.children ? JSON.parse(JSON.stringify(componentToClone.children)) : undefined, properties: {} };
+                movedItem = { 
+                    ...componentToClone, 
+                    instanceId: `${componentToClone.id}-${Date.now()}`, 
+                    children: componentToClone.children ? JSON.parse(JSON.stringify(componentToClone.children)) : undefined, 
+                    properties: componentToClone.properties ? JSON.parse(JSON.stringify(componentToClone.properties)) : {} 
+                };
             } else {
-                const sourceContainer = findTopLevel(draft.layout, source.droppableId);
-                if (sourceContainer) [movedItem] = sourceContainer.splice(source.index, 1);
+                const sourceContainer = findTargetContainer(draft.layout, source.droppableId);
+                if (sourceContainer) {
+                    [movedItem] = sourceContainer.splice(source.index, 1);
+                }
             }
+
             if (!movedItem) return;
-            const destContainer = findTopLevel(draft.layout, destination.droppableId);
-            if (destContainer) destContainer.splice(destination.index, 0, movedItem);
+
+            const destContainer = findTargetContainer(draft.layout, destination.droppableId);
+            if (destContainer) {
+                destContainer.splice(destination.index, 0, movedItem);
+            } else {
+                const sourceContainer = findTargetContainer(draft.layout, source.droppableId);
+                if (sourceContainer) {
+                    sourceContainer.splice(source.index, 0, movedItem);
+                }
+            }
         }));
     },
 });
