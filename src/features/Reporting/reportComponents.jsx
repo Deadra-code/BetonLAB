@@ -140,7 +140,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
             
             case 'section':
                 return (
-                    <Droppable droppableId={component.instanceId}>
+                    <Droppable droppableId={component.instanceId} isDropDisabled={!!component.children.find(c => c.id === 'columns')}>
                         {(provided, snapshot) => (
                             <div ref={provided.innerRef} {...provided.droppableProps} className={cn("p-4 border border-dashed border-gray-300 rounded-md min-h-[100px]", snapshot.isDraggingOver && "bg-blue-100")}>
                                 {component.children.length === 0 && <p className="text-xs text-center text-muted-foreground">Area Bagian (Seret komponen ke sini)</p>}
@@ -167,7 +167,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
                 return (
                     <div className={cn('grid gap-4', gridClassMap[numColumns])}>
                         {[...Array(numColumns).keys()].map(colIndex => (
-                            <div key={colIndex} className="w-full">
+                            <div key={colIndex} className="w-full mx-1">
                                 <Droppable droppableId={`${component.instanceId}-col-${colIndex}`}>
                                     {(provided, snapshot) => (
                                         <div
@@ -194,7 +194,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
                                                 {provided.placeholder}
                                             </div>
                                             {(!component.children[colIndex] || component.children[colIndex].length === 0) && (
-                                                <div className="text-xs text-center text-muted-foreground p-2">
+                                                <div className="text-xs text-center text-muted-foreground p-2 border-2 border-dashed rounded-md h-full">
                                                     Kolom {colIndex + 1}
                                                 </div>
                                             )}
