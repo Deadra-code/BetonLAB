@@ -1,5 +1,5 @@
 // Lokasi file: src/electron/ipcHandlers/referenceHandlers.js
-// Deskripsi: Handler untuk pustaka referensi.
+// Deskripsi: Handler untuk pustaka referensi, dengan penambahan validasi.
 
 const fs = require('fs');
 const path = require('path');
@@ -22,6 +22,15 @@ const handleDbError = (err, reject, customMessages = {}) => {
 
 function registerReferenceHandlers(ipcMain, db) {
     ipcMain.handle('file:save-reference-pdf', async (event, filePath) => {
+        // --- PERBAIKAN DIMULAI DI SINI ---
+        // Menambahkan validasi untuk memastikan filePath adalah string yang valid.
+        if (typeof filePath !== 'string' || !filePath) {
+            const errorMessage = "Path file tidak valid atau tidak diterima dari frontend.";
+            log.error(`Error in file:save-reference-pdf: ${errorMessage}`);
+            throw new Error(errorMessage);
+        }
+        // --- PERBAIKAN SELESAI ---
+
         const userDataPath = app.getPath('userData');
         const pdfDir = path.join(userDataPath, 'sni_library');
         if (!fs.existsSync(pdfDir)) {

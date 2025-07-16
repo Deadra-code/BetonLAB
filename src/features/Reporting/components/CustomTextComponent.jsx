@@ -1,19 +1,22 @@
 // Lokasi file: src/features/Reporting/components/CustomTextComponent.jsx
-// Deskripsi: Komponen untuk merender blok teks yang dapat diedit, dengan kustomisasi penuh.
+// Deskripsi: Komponen kini menerapkan semua properti styling teks.
 
 import React from 'react';
+import { replacePlaceholders } from '../../../utils/reporting/reportUtils';
 
-const CustomTextComponent = ({ properties }) => {
+const CustomTextComponent = ({ properties, reportData, settings }) => {
     // Ekstrak properti dengan nilai default untuk kustomisasi
     const {
         content = 'Klik untuk mengedit teks...',
         fontSize = 12,
         isBold = false,
-        isItalic = false, // BARU: Properti Italic
-        isUnderline = false, // BARU: Properti Underline
+        isItalic = false,
+        isUnderline = false,
         align = 'left',
         color = '#000000',
-        fontFamily = 'Arial' // BARU: Properti Font Family
+        fontFamily = 'Arial',
+        lineHeight = 1.5,
+        letterSpacing = 0,
     } = properties || {};
 
     // Terapkan gaya CSS inline berdasarkan properti
@@ -25,11 +28,16 @@ const CustomTextComponent = ({ properties }) => {
         textDecoration: isUnderline ? 'underline' : 'none',
         textAlign: align,
         color: color,
+        lineHeight: lineHeight,
+        letterSpacing: `${letterSpacing}px`,
+        whiteSpace: 'pre-wrap', // Agar line break dari textarea dihormati
     };
+    
+    const processedContent = replacePlaceholders(content, reportData, settings);
 
     return (
         <div style={style}>
-            {content}
+            {processedContent}
         </div>
     );
 };

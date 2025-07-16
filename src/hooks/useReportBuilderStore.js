@@ -1,12 +1,26 @@
-// ========================================================================
 // Lokasi file: src/hooks/useReportBuilderStore.js
-// Perbaikan: Mengubah impor 'temporal' dari 'zustand/middleware' menjadi 'zundo'
-// dan memastikan middleware diterapkan dengan benar.
-// ========================================================================
+// Deskripsi: Perbaikan kritis pada fungsi updateProperty untuk menangani properti bersarang.
+
 import { create } from 'zustand';
 import { produce } from 'immer';
-import { temporal } from 'zundo'; // <-- PERBAIKAN DI SINI
+import { temporal } from 'zundo';
 import { AVAILABLE_COMPONENTS } from '../features/Reporting/reportComponents.jsx';
+
+// Helper untuk mengatur nilai properti bersarang dengan aman
+const setNestedValue = (obj, path, value) => {
+    const keys = path.split('.');
+    let current = obj;
+    for (let i = 0; i < keys.length - 1; i++) {
+        const key = keys[i];
+        // Buat objek baru jika path tidak ada
+        if (current[key] === undefined || typeof current[key] !== 'object' || current[key] === null) {
+            current[key] = {};
+        }
+        current = current[key];
+    }
+    current[keys[keys.length - 1]] = value;
+};
+
 
 const storeLogic = (set, get) => ({
     // === STATE ===
@@ -19,7 +33,6 @@ const storeLogic = (set, get) => ({
         const layout = initialData?.layout || [[]];
         const pageSettings = initialData?.pageSettings || { size: 'a4', orientation: 'portrait' };
         
-        // Membersihkan riwayat undo/redo saat layout baru dimuat
         const temporalState = get().temporal;
         if (temporalState && temporalState.clear) {
             temporalState.clear();
@@ -42,13 +55,14 @@ const storeLogic = (set, get) => ({
             draft.layout[0] = [];
         }
     })),
-    updateProperty: (instanceId, propName, value) => set(produce(draft => {
+
+    // PERBAIKAN KUNCI: Menggunakan helper 'setNestedValue'
+    updateProperty: (instanceId, propPath, value) => set(produce(draft => {
         const findAndUpdate = (nodes) => {
             for (let i = 0; i < nodes.length; i++) {
                 const component = nodes[i];
                 if (component.instanceId === instanceId) {
-                    if (!component.properties) component.properties = {};
-                    component.properties[propName] = value;
+                    setNestedValue(component, propPath, value);
                     return true;
                 }
                 if (component.children && Array.isArray(component.children)) {
@@ -63,6 +77,7 @@ const storeLogic = (set, get) => ({
         };
         for (const page of draft.layout) { if (findAndUpdate(page)) break; }
     })),
+    
     deleteComponent: (instanceIdToDelete) => set(produce(draft => {
         const removeById = (nodes) => {
             for (let i = 0; i < nodes.length; i++) {
@@ -127,5 +142,4 @@ const storeLogic = (set, get) => ({
     },
 });
 
-// Terapkan middleware temporal di sini
 export const useReportBuilderStore = create(temporal(storeLogic));

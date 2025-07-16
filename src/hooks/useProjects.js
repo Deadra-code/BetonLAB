@@ -22,7 +22,7 @@ export const useProjects = (apiReady) => {
         } finally {
             setLoading(false);
         }
-    }, [apiReady, showArchived, notify]);
+    }, [apiReady, showArchived]); // PERBAIKAN: 'notify' dihapus dari dependency array
 
     useEffect(() => {
         fetchProjects();

@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/CustomImageComponent.jsx
-// Deskripsi: Komponen gambar dengan kontrol ukuran dan posisi.
+// Deskripsi: Komponen gambar kini menerapkan properti opacity.
 
 import React from 'react';
 import * as api from '../../../api/electronAPI';
@@ -12,8 +12,9 @@ const CustomImageComponent = ({ properties, onPropertyChange, instanceId }) => {
     const {
         src,
         hasFrame,
-        maxWidth = 100, // dalam persen
-        align = 'center' // left, center, right
+        maxWidth = 100,
+        align = 'center',
+        opacity = 100,
     } = properties || {};
 
     const handleImageUpload = async () => {
@@ -21,7 +22,7 @@ const CustomImageComponent = ({ properties, onPropertyChange, instanceId }) => {
         if (filePath) {
             const base64 = await api.readFileAsBase64(filePath);
             if (base64) {
-                onPropertyChange(instanceId, 'src', `data:image/png;base64,${base64}`);
+                onPropertyChange(instanceId, 'properties.src', `data:image/png;base64,${base64}`);
             }
         }
     };
@@ -36,6 +37,7 @@ const CustomImageComponent = ({ properties, onPropertyChange, instanceId }) => {
     const imageStyle = {
         maxWidth: `${maxWidth}%`,
         height: 'auto',
+        opacity: opacity / 100,
     };
 
     if (!src) {

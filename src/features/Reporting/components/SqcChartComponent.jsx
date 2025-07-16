@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/SqcChartComponent.jsx
-// Deskripsi: Komponen grafik SQC dengan opsi kustomisasi.
+// Deskripsi: Komponen grafik SQC dengan semua opsi kustomisasi diterapkan.
 
 import React, { useMemo } from 'react';
 import { ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Label } from 'recharts';
@@ -8,10 +8,14 @@ const SqcChartComponent = ({ trialData, properties }) => {
     // Ekstrak properti kustomisasi
     const {
         title = "Grafik Kontrol Kualitas Statistik",
+        subtitle = "",
         showGrid = true,
         showLegend = true,
-        lineColor = "#16a34a", // hijau
-        lineWidth = 2
+        legendPosition = "top",
+        lineColor = "#16a34a",
+        lineWidth = 2,
+        axisFontSize = 10,
+        axisColor = '#666666',
     } = properties || {};
 
     const chartData = useMemo(() => {
@@ -49,19 +53,20 @@ const SqcChartComponent = ({ trialData, properties }) => {
 
     return (
         <div className="text-sm my-4" id={`sqc-chart-${trialData.id}`}>
-            <h3 className="font-bold mb-2 text-base">{title}</h3>
+            <h3 className="font-bold mb-1 text-base">{title}</h3>
+            {subtitle && <p className="text-xs text-muted-foreground mb-2">{subtitle}</p>}
             <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                         {showGrid && <CartesianGrid strokeDasharray="3 3" />}
-                        <XAxis dataKey="index" type="number" allowDecimals={false}>
+                        <XAxis dataKey="index" type="number" allowDecimals={false} tick={{ fontSize: axisFontSize, fill: axisColor }}>
                             <Label value="Urutan Pengujian" offset={-15} position="insideBottom" />
                         </XAxis>
-                        <YAxis domain={['dataMin - 5', 'dataMax + 5']}>
+                        <YAxis domain={['dataMin - 5', 'dataMax + 5']} tick={{ fontSize: axisFontSize, fill: axisColor }}>
                             <Label value="Kuat Tekan (MPa)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle' }} />
                         </YAxis>
                         <Tooltip formatter={(value, name, props) => [`${props.payload.id}: ${value.toFixed(2)} MPa`, 'Hasil Uji']} />
-                        {showLegend && <Legend verticalAlign="top" />}
+                        {showLegend && <Legend verticalAlign={legendPosition} />}
                         <ReferenceLine y={stats.ucl} stroke="#ef4444" strokeWidth={2}>
                             <Label value={`BKA: ${stats.ucl.toFixed(2)}`} position="top" fill="#ef4444" fontSize={12} />
                         </ReferenceLine>

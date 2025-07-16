@@ -1,9 +1,20 @@
 // Lokasi file: public/preload.js
-// Deskripsi: Mengekspos API baru untuk KPI.
+// Deskripsi: Mengekspos API baru untuk manajemen sampel.
 
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
+    // Auth & Users
+    login: (credentials) => ipcRenderer.invoke('auth:login', credentials),
+    getUsers: () => ipcRenderer.invoke('users:get-all'),
+    addUser: (userData) => ipcRenderer.invoke('users:add', userData),
+    deleteUser: (id) => ipcRenderer.invoke('users:delete', id),
+    
+    // --- BARU: Sample Management ---
+    createSampleReception: (data) => ipcRenderer.invoke('samples:reception-create', data),
+    getMyTasks: (technicianId) => ipcRenderer.invoke('samples:get-my-tasks', technicianId),
+    // -----------------------------
+
     // Projects
     getProjects: (showArchived) => ipcRenderer.invoke('db:get-projects', showArchived),
     addProject: (project) => ipcRenderer.invoke('db:add-project', project),
@@ -11,7 +22,7 @@ contextBridge.exposeInMainWorld('api', {
     deleteProject: (id) => ipcRenderer.invoke('db:delete-project', id),
     setProjectStatus: (data) => ipcRenderer.invoke('db:set-project-status', data),
     duplicateProject: (id) => ipcRenderer.invoke('db:duplicate-project', id),
-    getProjectStatusCounts: () => ipcRenderer.invoke('db:get-project-status-counts'), // BARU
+    getProjectStatusCounts: () => ipcRenderer.invoke('db:get-project-status-counts'),
 
     // Trials
     getTrialsForProject: (projectId) => ipcRenderer.invoke('db:get-trials-for-project', projectId),
@@ -40,52 +51,34 @@ contextBridge.exposeInMainWorld('api', {
     updateConcreteTest: (test) => ipcRenderer.invoke('db:update-concrete-test', test),
     deleteConcreteTest: (id) => ipcRenderer.invoke('db:delete-concrete-test', id),
     
-    // Settings & Files
+    // ... sisa API tetap sama ...
     getSettings: () => ipcRenderer.invoke('settings:get-all'),
     setSetting: (key, value) => ipcRenderer.invoke('settings:set', { key, value }),
     openImageDialog: () => ipcRenderer.invoke('dialog:open-image'),
     openPdfDialog: () => ipcRenderer.invoke('dialog:open-pdf'),
     saveLogoFile: (filePath) => ipcRenderer.invoke('file:save-logo', filePath),
     saveTestImageFile: (filePath) => ipcRenderer.invoke('file:save-test-image', filePath),
-    saveReferencePdf: (filePath) => ipcRenderer.invoke('file:save-reference-pdf'),
+    saveReferencePdf: (filePath) => ipcRenderer.invoke('file:save-reference-pdf', filePath),
     saveRequestLetter: (filePath) => ipcRenderer.invoke('file:save-request-letter', filePath),
     readFileAsBase64: (filePath) => ipcRenderer.invoke('file:read-base64', filePath),
     saveCsv: (data) => ipcRenderer.invoke('file:save-csv', data),
     saveReportAsset: (filePath) => ipcRenderer.invoke('file:save-report-asset', filePath),
     listReportAssets: () => ipcRenderer.invoke('file:list-report-assets'),
     deleteReportAsset: (filePath) => ipcRenderer.invoke('file:delete-report-asset', filePath),
-
-    // Logging
     log: (logEntry) => ipcRenderer.send('log:write', logEntry),
-
-    // DB Management
     backupDatabase: () => ipcRenderer.invoke('db:backup'),
     restoreDatabase: () => ipcRenderer.invoke('db:restore'),
-
-    // App Info
     getAppInfo: () => ipcRenderer.invoke('app:get-info'),
-    
-    // Global Search
     globalSearch: (query) => ipcRenderer.invoke('db:global-search', query),
-
-    // Test Templates
     getTestTemplates: () => ipcRenderer.invoke('db:get-test-templates'),
     addTestTemplate: (template) => ipcRenderer.invoke('db:add-test-template', template),
     deleteTestTemplate: (id) => ipcRenderer.invoke('db:delete-test-template', id),
-    
-    // Notifications
     getDueSpecimens: () => ipcRenderer.invoke('db:get-due-specimens'),
-
-    // Reference Library
     getReferenceDocuments: () => ipcRenderer.invoke('db:get-reference-documents'),
     addReferenceDocument: (doc) => ipcRenderer.invoke('db:add-reference-document', doc),
     deleteReferenceDocument: (id) => ipcRenderer.invoke('db:delete-reference-document', id),
     openPath: (path) => ipcRenderer.invoke('shell:open-path', path),
-
-    // Reporting
     getFullReportData: (projectId) => ipcRenderer.invoke('report:get-full-data', projectId),
-
-    // Report Layouts (Report Builder v2/v3)
     getReportLayouts: () => ipcRenderer.invoke('db:get-report-layouts'),
     addReportLayout: (layout) => ipcRenderer.invoke('db:add-report-layout', layout),
     updateReportLayout: (layout) => ipcRenderer.invoke('db:update-report-layout', layout),

@@ -1,24 +1,49 @@
 // Lokasi file: src/features/Reporting/components/HeaderComponent.jsx
-// Deskripsi: Komponen untuk merender Kop Surat pada laporan.
+// Deskripsi: Komponen kop surat kini menerapkan styling dari properti.
 
 import React from 'react';
 
 const HeaderComponent = ({ settings, properties }) => {
-    // Komponen ini menggunakan data dari 'settings' yang dilewatkan dari ReportBuilder
     if (!settings) return null;
 
+    const {
+        layout = 'left',
+        logoSize = 64,
+        companyNameSize = 18,
+        subtitleSize = 10,
+        companyNameColor = '#000000',
+        subtitleColor = '#6B7280',
+    } = properties || {};
+
+    const containerClasses = {
+        left: "flex items-center",
+        top: "flex flex-col items-center text-center"
+    };
+
+    const companyNameStyle = {
+        fontSize: `${companyNameSize}pt`,
+        color: companyNameColor,
+        fontWeight: 'bold',
+    };
+
+    const subtitleStyle = {
+        fontSize: `${subtitleSize}pt`,
+        color: subtitleColor,
+    };
+
     return (
-        <div className="flex items-center p-2 border-b-2 border-black mb-4">
+        <div className={`${containerClasses[layout]} p-2 border-b-2 border-black mb-4`}>
             {settings.logoPath && (
                 <img
                     src={`file://${settings.logoPath}`}
                     alt="Logo"
-                    className="w-16 h-16 object-contain mr-4"
+                    style={{ width: `${logoSize}px`, height: `${logoSize}px` }}
+                    className="object-contain mr-4"
                 />
             )}
             <div>
-                <h2 className="text-xl font-bold">{settings.companyName || 'Nama Perusahaan Anda'}</h2>
-                <p className="text-xs">Laporan Laboratorium Beton</p>
+                <h2 style={companyNameStyle}>{settings.companyName || 'Nama Perusahaan Anda'}</h2>
+                <p style={subtitleStyle}>Laporan Laboratorium Beton</p>
             </div>
         </div>
     );

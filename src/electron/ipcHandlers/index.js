@@ -1,6 +1,5 @@
 // Lokasi file: src/electron/ipcHandlers/index.js
-// Deskripsi: Titik pusat untuk mendaftarkan semua handler IPC.
-// PERUBAHAN: Menghapus registrasi untuk `reportTemplateHandlers` (sistem lama).
+// Deskripsi: Mendaftarkan `sampleHandlers` yang baru.
 
 const { ipcMain } = require('electron');
 const { registerAppHandlers } = require('./appHandlers');
@@ -10,6 +9,8 @@ const { registerProjectHandlers } = require('./projectHandlers');
 const { registerReferenceHandlers } = require('./referenceHandlers');
 const { registerSettingsHandlers } = require('./settingsHandlers');
 const { registerReportLayoutHandlers } = require('./reportLayoutHandlers');
+const { registerUserHandlers } = require('./userHandlers');
+const { registerSampleHandlers } = require('./sampleHandlers'); // BARU: Impor sample handlers
 
 function registerIpcHandlers(db) {
     // Register semua handler dari modul-modul terpisah
@@ -20,6 +21,8 @@ function registerIpcHandlers(db) {
     registerReferenceHandlers(ipcMain, db);
     registerSettingsHandlers(ipcMain, db);
     registerReportLayoutHandlers(ipcMain, db);
+    registerUserHandlers(ipcMain, db);
+    registerSampleHandlers(ipcMain, db); // BARU: Daftarkan sample handlers
 }
 
 module.exports = { registerIpcHandlers };

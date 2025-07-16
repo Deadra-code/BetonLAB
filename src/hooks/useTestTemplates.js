@@ -24,8 +24,7 @@ export const useTestTemplates = (apiReady) => {
         } finally {
             setLoading(false);
         }
-    // PERBAIKAN: Menghapus `notify` dari dependency array untuk memutus infinite loop.
-    }, [apiReady]);
+    }, [apiReady]); // PERBAIKAN: 'notify' dihapus dari dependency array
 
     useEffect(() => {
         fetchTemplates();

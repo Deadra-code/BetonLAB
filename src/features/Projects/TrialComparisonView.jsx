@@ -10,11 +10,13 @@ import { exportComparisonToCsv } from '../../utils/csvExporter';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import * as api from '../../api/electronAPI';
+import { useNotifier } from '../../hooks/useNotifier'; // PERBAIKAN: Impor useNotifier
 
 export default function TrialComparisonView({ trials, onBack }) {
     const [comparisonData, setComparisonData] = useState([]);
     const [chartParameter, setChartParameter] = useState('avgStrength');
     const [loading, setLoading] = useState(true);
+    const { notify } = useNotifier(); // PERBAIKAN: Panggil hook notifier
 
     useEffect(() => {
         const fetchTestData = async () => {
@@ -99,13 +101,13 @@ export default function TrialComparisonView({ trials, onBack }) {
                     <h1 className="text-3xl font-bold">Perbandingan Trial Mix</h1>
                     <p className="text-muted-foreground">Membandingkan {trials.length} trial mix yang dipilih.</p>
                 </div>
-                <Button onClick={() => exportComparisonToCsv({ trials: comparisonData })}>
+                {/* PERBAIKAN: Teruskan 'notify' ke fungsi ekspor */}
+                <Button onClick={() => exportComparisonToCsv({ trials: comparisonData, notify })}>
                     <FileOutput className="mr-2 h-4 w-4" /> Ekspor ke CSV
                 </Button>
             </header>
             
             <div className="flex-grow overflow-auto space-y-6">
-                {/* --- BARU: Grafik Perbandingan --- */}
                 <Card>
                     <CardHeader>
                         <div className="flex justify-between items-center">
@@ -139,7 +141,6 @@ export default function TrialComparisonView({ trials, onBack }) {
                     </CardContent>
                 </Card>
 
-                {/* Tabel Data */}
                 <Card>
                     <CardContent className="p-0">
                         <Table>

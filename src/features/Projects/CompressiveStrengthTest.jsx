@@ -1,6 +1,6 @@
 // Lokasi file: src/features/Projects/CompressiveStrengthTest.jsx
-// Deskripsi: Rombak total alur kerja untuk manajemen benda uji yang lebih cerdas dan akurat.
-// Menambahkan header lembar data dan metadata.
+// Deskripsi: Dirombak total untuk menjadi tampilan data saja.
+// Tombol "Tambah Benda Uji" dihapus karena pembuatannya kini melalui Penerimaan Sampel.
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
@@ -16,13 +16,11 @@ import { Badge } from '../../components/ui/badge';
 import { SecureDeleteDialog } from '../../components/ui/SecureDeleteDialog';
 import { cn } from '../../lib/utils';
 
-// Helper untuk format tanggal
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-// Komponen Header Lembar Data yang Dapat Digunakan Kembali
 const DatasheetHeader = ({ metadata, onMetadataChange }) => (
     <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50 mb-4">
         <Input placeholder="Diuji oleh..." value={metadata.testedBy || ''} onChange={e => onMetadataChange('testedBy', e.target.value)} />
@@ -32,8 +30,8 @@ const DatasheetHeader = ({ metadata, onMetadataChange }) => (
     </div>
 );
 
-// --- PEROMBAKAN TOTAL: SpecimenForm ---
-const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
+// Form ini sekarang hanya digunakan untuk mengedit/memasukkan hasil pengujian.
+export const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -128,15 +126,13 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                {isEditing ? (
-                    <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil size={14} /></Button>
-                ) : (
-                    <Button>Tambah Benda Uji</Button>
-                )}
+                {/* Tombol pemicu sekarang hanya ikon pensil untuk mengedit */}
+                <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil size={14} /></Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? 'Edit Lembar Data Uji Tekan' : 'Lembar Data Uji Tekan Baru'}</DialogTitle>
+                    <DialogTitle>Edit Lembar Data Uji Tekan</DialogTitle>
+                    <DialogDescription>Masukkan atau perbarui hasil pengujian untuk benda uji ini.</DialogDescription>
                 </DialogHeader>
                 <DatasheetHeader metadata={{
                     testedBy: inputData.testedBy,
@@ -205,7 +201,7 @@ const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
 
 // Komponen utama
 export default function CompressiveStrengthTest({ trial, chartRef }) {
-    const { tests, addTest, updateTest, deleteTest } = useConcreteTests(trial?.id);
+    const { tests, updateTest, deleteTest } = useConcreteTests(trial?.id);
 
     const chartData = useMemo(() => {
         const testedSpecimens = tests.filter(t => t.status === 'Telah Diuji');
@@ -258,13 +254,13 @@ export default function CompressiveStrengthTest({ trial, chartRef }) {
 
             <div className="flex justify-between items-center mt-6 mb-4">
                 <h3 className="font-semibold">Manajemen Benda Uji</h3>
-                <SpecimenForm onSave={addTest} />
+                {/* Tombol Tambah Benda Uji dihapus dari sini */}
             </div>
             {tests.length === 0 ? (
                  <div className="text-center py-10 border-2 border-dashed rounded-lg">
                     <Hammer className="mx-auto h-12 w-12 text-muted-foreground" />
                     <h4 className="mt-4 text-lg font-semibold">Belum Ada Data Benda Uji</h4>
-                    <p className="text-muted-foreground text-sm">Klik "Tambah Benda Uji" untuk mencatat data benda uji pertama Anda.</p>
+                    <p className="text-muted-foreground text-sm">Benda uji untuk trial ini dapat ditambahkan melalui menu "Penerimaan Sampel".</p>
                 </div>
             ) : (
                 <Table>

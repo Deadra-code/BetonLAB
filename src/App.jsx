@@ -1,12 +1,13 @@
 // Lokasi file: src/App.jsx
-// Deskripsi: Versi lengkap dengan semua state dan handler, termasuk Badge peringatan backup.
+// Deskripsi: Rombak total untuk mengintegrasikan alur otentikasi.
+// Aplikasi sekarang akan menampilkan halaman Login jika pengguna belum terotentikasi.
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Beaker, FolderKanban, Settings, LayoutDashboard, BookOpen, FileSignature, Bell, AlertTriangle } from 'lucide-react';
+import { Loader2, Beaker, FolderKanban, Settings, LayoutDashboard, BookOpen, FileSignature, Bell, AlertTriangle, LogOut, UserCog } from 'lucide-react';
 import { useSettings } from './hooks/useSettings';
 import ProjectManager from './features/Projects/ProjectManager.jsx';
 import MaterialTestingManager from './features/MaterialTesting/MaterialTestingManager.jsx';
-import SettingsPage from './features/Settings/SettingsPage.jsx'; // Perbaikan ekstensi
+import SettingsPage from './features/Settings/SettingsPage.jsx';
 import { Button } from './components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
 import { Dialog, DialogContent, DialogTrigger } from './components/ui/dialog';
@@ -22,6 +23,11 @@ import { useNotifications } from './hooks/useNotifications';
 import ReferenceLibraryManager from './features/ReferenceLibrary/ReferenceLibraryManager.jsx';
 import ReportBuilderPage from './features/Reporting/ReportBuilderPage.jsx';
 import AppTour from './features/Onboarding/AppTour.jsx';
+
+// --- Impor untuk Otentikasi ---
+import { useAuthStore } from './hooks/useAuth.js';
+import LoginPage from './features/Auth/LoginPage.jsx';
+import UserManagementPage from './features/Auth/UserManagementPage.jsx';
 
 const NotificationBell = ({ notifications, onNotificationClick }) => {
     return (
@@ -74,8 +80,12 @@ export default function App() {
     const [isInitialStateLoaded, setIsInitialStateLoaded] = useState(false);
     const [comparisonTrials, setComparisonTrials] = useState([]);
     const [reportBuilderContext, setReportBuilderContext] = useState(null);
-    const [pendingNavigation, setPendingNavigation] = useState(null);
     const [isTourRunning, setIsTourRunning] = useState(false);
+    
+    // PERBAIKAN: State untuk menangani navigasi yang tertunda
+    const [pendingNavigation, setPendingNavigation] = useState(null);
+
+    const { isAuthenticated, user, logout } = useAuthStore();
 
     const { settings, handleUpdateSetting, handleSelectLogo, handleBackupDatabase, handleRestoreDatabase } = useSettings(apiReady);
     const { notifications } = useNotifications(apiReady);
@@ -95,7 +105,7 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        if (settings && !isInitialStateLoaded) {
+        if (settings && !isInitialStateLoaded && isAuthenticated) {
             const lastView = settings.lastActiveView || 'dashboard';
             setMainView(lastView);
             if (!settings.hasCompletedTour) {
@@ -103,7 +113,7 @@ export default function App() {
             }
             setIsInitialStateLoaded(true);
         }
-    }, [settings, isInitialStateLoaded]);
+    }, [settings, isInitialStateLoaded, isAuthenticated]);
     
     const navigateTo = (view) => {
         setMainView(view);
@@ -134,10 +144,17 @@ export default function App() {
     const handleCompareTrials = (trials) => { setComparisonTrials(trials); setActiveTrial(null); handleUpdateSetting('lastActiveTrial', ''); };
     const handleReturnToManager = () => { setActiveTrial(null); setComparisonTrials([]); handleUpdateSetting('lastActiveTrial', ''); };
     const handleNavigateToReportBuilder = (context) => { setReportBuilderContext(context); setMainView('report-builder'); handleUpdateSetting('lastActiveView', 'report-builder'); };
+    
     const handleGlobalNavigate = (item, type) => {
-        if (type === 'project') { handleProjectSelect(item); } 
-        else if (type === 'trial') { navigateTo('projects'); setTimeout(() => { setActiveProject(item); handleTrialSelect({ ...item, design_input: JSON.parse(item.design_input_json || '{}'), design_result: JSON.parse(item.design_result_json || '{}') }); }, 100); } 
-        else if (type === 'material') { navigateTo('materials'); }
+        if (type === 'project') {
+            handleProjectSelect(item);
+        } else if (type === 'trial') {
+            // PERBAIKAN: Gunakan state 'pendingNavigation' daripada setTimeout
+            navigateTo('projects');
+            setPendingNavigation({ type: 'trial', item });
+        } else if (type === 'material') {
+            navigateTo('materials');
+        }
     };
 
     const handleTourEnd = () => {
@@ -162,20 +179,40 @@ export default function App() {
             case 'dashboard':
                 return <Dashboard apiReady={apiReady} onNavigate={navigateTo} onProjectSelect={handleProjectSelect} />;
             case 'projects':
-                return <ProjectManager apiReady={apiReady} onTrialSelect={handleTrialSelect} onCompareTrials={handleCompareTrials} onNavigateToReportBuilder={handleNavigateToReportBuilder} initialProject={activeProject} pendingNavigation={pendingNavigation} onPendingNavigationConsumed={() => setPendingNavigation(null)} />;
+                // PERBAIKAN: Teruskan props untuk pending navigation
+                return <ProjectManager 
+                            apiReady={apiReady} 
+                            onTrialSelect={handleTrialSelect} 
+                            onCompareTrials={handleCompareTrials} 
+                            onNavigateToReportBuilder={handleNavigateToReportBuilder} 
+                            initialProject={activeProject} 
+                            pendingNavigation={pendingNavigation} 
+                            onPendingNavigationConsumed={() => setPendingNavigation(null)} 
+                        />;
             case 'materials':
                 return <MaterialTestingManager apiReady={apiReady} />;
             case 'references':
                 return <ReferenceLibraryManager apiReady={apiReady} />;
             case 'report-builder':
                 return <ReportBuilderPage context={reportBuilderContext} apiReady={apiReady} />;
+            case 'user-management':
+                return <UserManagementPage apiReady={apiReady} currentUser={user} />;
             default:
                 return <Dashboard apiReady={apiReady} onNavigate={navigateTo} onProjectSelect={handleProjectSelect} />;
         }
     };
 
-    if (!apiReady || !isInitialStateLoaded) {
+    if (!apiReady) {
         return <div className="flex h-screen w-full items-center justify-center bg-background text-foreground"><Loader2 className="h-8 w-8 animate-spin mr-3" />Memuat Aplikasi...</div>;
+    }
+    
+    if (!isAuthenticated) {
+        return (
+             <div className={`flex h-screen font-sans ${settings.theme || 'light'}`}>
+                <ToasterProvider />
+                <LoginPage />
+             </div>
+        )
     }
 
     return (
@@ -188,12 +225,13 @@ export default function App() {
                         <div className="mb-8"><img src={settings.logoPath ? `data:image/png;base64,${settings.logoBase64}` : 'https://placehold.co/40x40/e2e8f0/303030?text=BL'} alt="Logo" className="w-10 h-10 object-contain rounded-lg"/></div>
                         <div className="space-y-3 flex flex-col items-center">
                             <Tooltip><TooltipTrigger asChild><Button className="nav-dashboard" variant={mainView === 'dashboard' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('dashboard')}><LayoutDashboard className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Dashboard</TooltipContent></Tooltip>
-                            <Tooltip><TooltipTrigger asChild><Button className="nav-projects" variant={mainView === 'projects' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('projects')}><FolderKanban className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Manajemen Proyek</TooltipContent></Tooltip>
+                            { (user.role === 'admin' || user.role === 'penyelia') && <Tooltip><TooltipTrigger asChild><Button className="nav-projects" variant={mainView === 'projects' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('projects')}><FolderKanban className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Manajemen Proyek</TooltipContent></Tooltip> }
                             <Tooltip><TooltipTrigger asChild><Button className="nav-materials" variant={mainView === 'materials' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('materials')}><Beaker className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Pengujian Material</TooltipContent></Tooltip>
-                            <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'report-builder' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('report-builder')}><FileSignature className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Report Builder</TooltipContent></Tooltip>
+                            { (user.role === 'admin' || user.role === 'penyelia') && <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'report-builder' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('report-builder')}><FileSignature className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Report Builder</TooltipContent></Tooltip> }
                             <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'references' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('references')}><BookOpen className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Pustaka Referensi</TooltipContent></Tooltip>
                         </div>
-                        <div className="mt-auto flex flex-col items-center">
+                        <div className="mt-auto flex flex-col items-center space-y-2">
+                             { user.role === 'admin' && <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'user-management' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('user-management')}><UserCog className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Manajemen Pengguna</TooltipContent></Tooltip> }
                              <Dialog><Tooltip><TooltipTrigger asChild><DialogTrigger asChild>
                                 <Button variant='ghost' size="icon" className="relative">
                                     <Settings className="h-5 w-5"/>
@@ -207,13 +245,20 @@ export default function App() {
                                 Pengaturan
                                 {needsBackupWarning && <p className="text-yellow-500">Backup data disarankan</p>}
                              </TooltipContent></Tooltip><DialogContent className="max-w-4xl"><SettingsPage settings={settings} onUpdate={handleUpdateSetting} onSelectLogo={handleSelectLogo} onBackup={handleBackupDatabase} onRestore={handleRestoreDatabase} onStartTour={startTour}/></DialogContent></Dialog>
+                             <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={logout}><LogOut className="h-5 w-5 text-destructive"/></Button></TooltipTrigger><TooltipContent side="right">Keluar</TooltipContent></Tooltip>
                         </div>
                     </nav>
 
                     <div className="flex-1 flex flex-col overflow-hidden">
                         <header className="flex-shrink-0 h-16 bg-card border-b flex items-center justify-between px-6">
                            <GlobalSearch onNavigate={handleGlobalNavigate} />
-                           <NotificationBell notifications={notifications} onNotificationClick={handleNotificationClick} />
+                           <div className="flex items-center gap-4">
+                               <div className="text-right">
+                                   <p className="text-sm font-semibold">{user.full_name}</p>
+                                   <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                               </div>
+                               <NotificationBell notifications={notifications} onNotificationClick={handleNotificationClick} />
+                           </div>
                         </header>
                         <main className="flex-grow overflow-y-auto">
                             <ErrorBoundary>{renderMainContent()}</ErrorBoundary>

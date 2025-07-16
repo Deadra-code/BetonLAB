@@ -21,7 +21,6 @@ import HelpTooltip from '../../components/ui/HelpTooltip';
 import AddMaterialDialog from '../MaterialTesting/AddMaterialDialog';
 import ReferenceLibraryDialog from '../ReferenceLibrary/ReferenceLibraryDialog';
 
-// Chart Gradasi Gabungan (Dipindahkan ke sini untuk menjaga komponen tetap mandiri)
 const CombinedGradationChart = ({ fineAggregate, coarseAggregate, mixProportions, chartRef }) => {
     const chartData = useMemo(() => {
         if (!fineAggregate || !coarseAggregate || !mixProportions) return [];
@@ -96,7 +95,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
 
     const handleInputChange = (field, value) => { setInputs(prev => ({ ...prev, [field]: value })); setIsDirty(true); };
     
-    // PERBAIKAN: Fungsi ini sekarang secara otomatis mengisi semua properti terkait.
     const handleMaterialSelect = (type, materialIdStr) => {
         const materialId = materialIdStr ? parseInt(materialIdStr) : null;
         let selectedMaterialProps = {};
@@ -137,7 +135,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
         notify.info(`Properti untuk ${type.replace(/_/g, ' ')} telah diperbarui.`);
     };
     
-    // PERBAIKAN: Fungsi ini hanya menyimpan input, tidak menghitung.
     const handleSaveInputsOnly = async () => {
         if (!trial || !isDirty) return;
         setIsSaving(true);
@@ -161,7 +158,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
             setStep(3);
             notify.success("Perhitungan berhasil diselesaikan.");
             writeLog('info', `Calculation successful for trial: ${trial.trial_name}`);
-            // Otomatis menyimpan setelah perhitungan berhasil
             const numericInputs = Object.entries(inputs).reduce((acc, [key, value]) => {
                 if (key === 'admixture') { acc[key] = value; }
                 else { const num = parseFloat(value); acc[key] = isNaN(num) ? value : num; }
@@ -187,7 +183,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
         };
     }, [inputs]);
 
-    // PERBAIKAN: Fungsi untuk navigasi via Stepper
     const handleStepClick = (targetStep) => {
         if (targetStep < step) {
             setStep(targetStep);
@@ -257,7 +252,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                         <CardDescription>Pilih material dari pustaka. Properti akan terisi otomatis dan dapat diubah jika perlu.</CardDescription>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                        {/* Kolom Pemilihan Material */}
                         <div className="space-y-4">
                             <div>
                                 <Label>Semen</Label>
@@ -269,27 +263,53 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                             <div>
                                 <Label>Agregat Halus</Label>
                                 <div className="flex items-center gap-2">
-                                    <Select onValueChange={val => handleMaterialSelect('fine_aggregate', val)} value={String(inputs.selectedFineId) || ''}><SelectTrigger><SelectValue placeholder="Pilih Agregat Halus..."/></SelectTrigger><SelectContent>{activeProperties.fineAggregates.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent></Select>
+                                    {/* PERBAIKAN: Hapus 'disabled' dan tambahkan opsi manual */}
+                                    <Select onValueChange={val => handleMaterialSelect('fine_aggregate', val)} value={String(inputs.selectedFineId) || 'manual'}>
+                                        <SelectTrigger><SelectValue placeholder="Pilih Agregat Halus..."/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="manual">-- Input Manual --</SelectItem>
+                                            {activeProperties.fineAggregates.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
                                     <AddMaterialDialog onMaterialAdded={refresh} />
                                 </div>
                             </div>
                             <div>
                                 <Label>Agregat Kasar</Label>
                                 <div className="flex items-center gap-2">
-                                    <Select onValueChange={val => handleMaterialSelect('coarse_aggregate', val)} value={String(inputs.selectedCoarseId) || ''}><SelectTrigger><SelectValue placeholder="Pilih Agregat Kasar..."/></SelectTrigger><SelectContent>{activeProperties.coarseAggregates.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent></Select>
+                                    {/* PERBAIKAN: Hapus 'disabled' dan tambahkan opsi manual */}
+                                    <Select onValueChange={val => handleMaterialSelect('coarse_aggregate', val)} value={String(inputs.selectedCoarseId) || 'manual'}>
+                                        <SelectTrigger><SelectValue placeholder="Pilih Agregat Kasar..."/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="manual">-- Input Manual --</SelectItem>
+                                            {activeProperties.coarseAggregates.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
                                     <AddMaterialDialog onMaterialAdded={refresh} />
                                 </div>
                             </div>
                         </div>
-                        {/* Kolom Properti Manual */}
-                        <div className="space-y-4 border-l pl-6">
-                            <ValidatedInput label="Modulus Kehalusan Pasir (FM)" value={inputs.finenessModulus} onChange={e => handleInputChange('finenessModulus', e.target.value)} />
-                            <ValidatedInput label="Berat Isi Ag. Kasar (kg/m³)" value={inputs.dryRoddedWeightCoarse} onChange={e => handleInputChange('dryRoddedWeightCoarse', e.target.value)} />
-                            <ValidatedInput label="Kadar Air Ag. Halus (%)" value={inputs.moistureFine} onChange={e => handleInputChange('moistureFine', e.target.value)} />
-                            <ValidatedInput label="Penyerapan Ag. Halus (%)" value={inputs.absorptionFine} onChange={e => handleInputChange('absorptionFine', e.target.value)} />
-                            <ValidatedInput label="Kadar Air Ag. Kasar (%)" value={inputs.moistureCoarse} onChange={e => handleInputChange('moistureCoarse', e.target.value)} />
-                            <ValidatedInput label="Penyerapan Ag. Kasar (%)" value={inputs.absorptionCoarse} onChange={e => handleInputChange('absorptionCoarse', e.target.value)} />
-                        </div>
+                        
+                        {/* PERBAIKAN: Tampilkan field manual hanya jika tidak ada material yang dipilih */}
+                        {(inputs.selectedFineId === null || inputs.selectedCoarseId === null) && (
+                            <div className="space-y-4 border-l pl-6">
+                                <p className="text-sm font-semibold text-muted-foreground">Properti Manual</p>
+                                {inputs.selectedFineId === null && (
+                                    <>
+                                        <ValidatedInput label="Modulus Kehalusan Pasir (FM)" value={inputs.finenessModulus} onChange={e => handleInputChange('finenessModulus', e.target.value)} />
+                                        <ValidatedInput label="Kadar Air Ag. Halus (%)" value={inputs.moistureFine} onChange={e => handleInputChange('moistureFine', e.target.value)} />
+                                        <ValidatedInput label="Penyerapan Ag. Halus (%)" value={inputs.absorptionFine} onChange={e => handleInputChange('absorptionFine', e.target.value)} />
+                                    </>
+                                )}
+                                {inputs.selectedCoarseId === null && (
+                                     <>
+                                        <ValidatedInput label="Berat Isi Ag. Kasar (kg/m³)" value={inputs.dryRoddedWeightCoarse} onChange={e => handleInputChange('dryRoddedWeightCoarse', e.target.value)} />
+                                        <ValidatedInput label="Kadar Air Ag. Kasar (%)" value={inputs.moistureCoarse} onChange={e => handleInputChange('moistureCoarse', e.target.value)} />
+                                        <ValidatedInput label="Penyerapan Ag. Kasar (%)" value={inputs.absorptionCoarse} onChange={e => handleInputChange('absorptionCoarse', e.target.value)} />
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}
@@ -325,7 +345,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                 </Card>
             )}
 
-            {/* PERBAIKAN: Tata letak tombol aksi baru */}
             <div className="flex justify-between items-center mt-6">
                 <Button variant="outline" onClick={() => setStep(s => s - 1)} disabled={step === 1}><ArrowLeft className="mr-2 h-4 w-4" /> Kembali</Button>
                 <div className="flex items-center gap-2">

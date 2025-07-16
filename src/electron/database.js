@@ -1,15 +1,23 @@
 // Lokasi file: src/electron/database.js
-// Deskripsi: Versi lengkap dengan migrasi hingga v14 untuk metadata lembar data.
+// Deskripsi: Versi lengkap dengan semua migrasi hingga v16 (Fase 2 LIMS).
 
 const { app } = require('electron');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const log = require('electron-log');
+const crypto = require('crypto');
 
 const dbPath = path.join(app.getPath('userData'), 'betonlab_v4.db');
-// Versi database dinaikkan menjadi 14
-const LATEST_DB_VERSION = 14;
+// Versi database saat ini adalah 16
+const LATEST_DB_VERSION = 16;
 let db;
+
+// Helper untuk hash password
+const hashPassword = (password) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return `${salt}:${hash}`;
+};
 
 async function runMigrations(currentVersion) {
     return new Promise((resolve, reject) => {
@@ -68,31 +76,68 @@ async function runMigrations(currentVersion) {
                 if (currentVersion < 13) {
                     await new Promise((res, rej) => db.run(`ALTER TABLE projects ADD COLUMN assignedTo TEXT`, (err) => err && !err.message.includes('duplicate column') ? rej(err) : res()));
                 }
-
-                // --- MIGRASI BARU ---
                 if (currentVersion < 14) {
-                    log.info('Migration to v14: Adding datasheet metadata to test tables...');
                     const columnsToAdd = [
-                        { name: 'testedBy', type: 'TEXT' },
-                        { name: 'checkedBy', type: 'TEXT' },
-                        { name: 'testMethod', type: 'TEXT' } // Untuk menyimpan referensi SNI
+                        { name: 'testedBy', type: 'TEXT' }, { name: 'checkedBy', type: 'TEXT' }, { name: 'testMethod', type: 'TEXT' }
                     ];
                     const tablesToUpdate = ['material_tests', 'concrete_tests'];
-
                     for (const table of tablesToUpdate) {
                         for (const col of columnsToAdd) {
                             await new Promise((res, rej) => {
                                 db.run(`ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type}`, (err) => {
-                                    if (err && !err.message.includes('duplicate column name')) {
-                                        log.error(`Migration to v14 (adding ${col.name} to ${table}) failed:`, err);
-                                        return rej(err);
-                                    }
+                                    if (err && !err.message.includes('duplicate column name')) return rej(err);
                                     res();
                                 });
                             });
                         }
                     }
-                    log.info('Migration to v14: Datasheet metadata columns added.');
+                }
+                if (currentVersion < 15) {
+                    log.info('Migration to v15: Adding LIMS foundation tables (users, audit_log)...');
+                    await new Promise((res, rej) => db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, full_name TEXT, role TEXT NOT NULL CHECK(role IN ('admin', 'penyelia', 'teknisi')))`, (err) => err ? rej(err) : res()));
+                    await new Promise((res, rej) => db.run(`CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, timestamp TEXT NOT NULL, action TEXT NOT NULL, details TEXT, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL)`, (err) => err ? rej(err) : res()));
+                    const tablesToUpdateWithUserId = ['projects', 'materials', 'project_trials', 'material_tests', 'concrete_tests'];
+                    for (const table of tablesToUpdateWithUserId) {
+                         await new Promise((res, rej) => db.run(`ALTER TABLE ${table} ADD COLUMN created_by_user_id INTEGER`, (err) => err && !err.message.includes('duplicate column') ? rej(err) : res()));
+                         await new Promise((res, rej) => db.run(`ALTER TABLE ${table} ADD COLUMN updated_by_user_id INTEGER`, (err) => err && !err.message.includes('duplicate column') ? rej(err) : res()));
+                    }
+                    db.get("SELECT COUNT(*) as count FROM users", [], (err, row) => {
+                        if (err) return reject(err);
+                        if (row.count === 0) {
+                            log.info('No users found. Creating default admin user...');
+                            const defaultPasswordHash = hashPassword('admin123');
+                            db.run("INSERT INTO users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)", ['admin', defaultPasswordHash, 'Administrator', 'admin'], (err) => { if (err) reject(err); });
+                        }
+                    });
+                }
+                if (currentVersion < 16) {
+                    log.info('Migration to v16: Adding Sample Lifecycle tables and columns...');
+                    await new Promise((res, rej) => db.run(`
+                        CREATE TABLE IF NOT EXISTS sample_receptions (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            project_id INTEGER NOT NULL,
+                            reception_date TEXT NOT NULL,
+                            received_by_user_id INTEGER,
+                            submitted_by TEXT,
+                            notes TEXT,
+                            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                            FOREIGN KEY (received_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+                        )
+                    `, (err) => err ? rej(err) : res()));
+                    const columnsToAdd = [
+                        { name: 'sample_reception_id', type: 'INTEGER' },
+                        { name: 'lab_id', type: 'TEXT' },
+                        { name: 'assigned_technician_id', type: 'INTEGER' },
+                        { name: 'storage_location', type: 'TEXT' }
+                    ];
+                    for (const col of columnsToAdd) {
+                        await new Promise((res, rej) => {
+                            db.run(`ALTER TABLE concrete_tests ADD COLUMN ${col.name} ${col.type}`, (err) => {
+                                if (err && !err.message.includes('duplicate column')) return rej(err);
+                                res();
+                            });
+                        });
+                    }
                 }
 
                 db.run(`PRAGMA user_version = ${LATEST_DB_VERSION}`, resolve);

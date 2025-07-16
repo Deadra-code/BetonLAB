@@ -1,29 +1,45 @@
 // Lokasi file: src/features/Reporting/components/ClientInfoBlock.jsx
-// Deskripsi: Komponen React untuk menampilkan blok info klien di kanvas Report Builder.
+// Deskripsi: Komponen kini menerapkan styling dari properti.
 
 import React from 'react';
+import { cn } from '../../../lib/utils';
 
-const InfoItem = ({ label, value }) => {
+const InfoItem = ({ label, value, properties }) => {
     if (!value) return null;
+    const { labelStyling = {}, valueStyling = {} } = properties;
+    
+    const labelStyle = {
+        fontSize: `${labelStyling.fontSize || 9}pt`,
+        color: labelStyling.color || '#6B7280',
+        fontWeight: labelStyling.isBold ? 'bold' : 'normal',
+    };
+    const valueStyle = {
+        fontSize: `${valueStyling.fontSize || 10}pt`,
+        color: valueStyling.color || '#1F2937',
+        fontWeight: valueStyling.isBold ? 'bold' : 'normal',
+    };
+
     return (
         <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
-            <p className="text-sm text-gray-800">{value}</p>
+            <p style={labelStyle} className="uppercase tracking-wider">{label}</p>
+            <p style={valueStyle}>{value}</p>
         </div>
     );
 };
 
-const ClientInfoBlock = ({ reportData }) => {
+const ClientInfoBlock = ({ reportData, properties }) => {
+    const { showBorder = true } = properties || {};
+
     if (!reportData) {
         return <div className="p-4 text-center text-muted-foreground border-2 border-dashed">Blok Info Klien</div>;
     }
 
     return (
-        <div className="p-4 my-2 border rounded-lg bg-slate-50 space-y-3">
-            <InfoItem label="Klien" value={reportData.clientName} />
-            <InfoItem label="Alamat" value={reportData.clientAddress} />
-            <InfoItem label="Kontak Person" value={reportData.clientContactPerson} />
-            <InfoItem label="Nomor Kontak" value={reportData.clientContactNumber} />
+        <div className={cn("p-4 my-2 space-y-3", showBorder && "border rounded-lg")}>
+            <InfoItem label="Klien" value={reportData.clientName} properties={properties} />
+            <InfoItem label="Alamat" value={reportData.clientAddress} properties={properties} />
+            <InfoItem label="Kontak Person" value={reportData.clientContactPerson} properties={properties} />
+            <InfoItem label="Nomor Kontak" value={reportData.clientContactNumber} properties={properties} />
         </div>
     );
 };

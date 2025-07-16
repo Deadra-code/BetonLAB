@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/JmdTableComponent.jsx
-// Deskripsi: Komponen untuk merender tabel Job Mix Design dengan styling kustom.
+// Deskripsi: Komponen kini menerapkan styling dan properti kustom.
 
 import React from 'react';
 
@@ -8,12 +8,14 @@ const JmdTableComponent = ({ trialData, properties }) => {
 
     // Ekstrak properti kustomisasi dengan nilai default
     const {
+        title = "Tabel Rencana Campuran (Job Mix Design)",
         showCorrected = true,
         showSsd = true,
-        headerBgColor = '#E5E7EB', // abu-abu muda
-        headerTextColor = '#111827', // abu-abu gelap
-        borderColor = '#9CA3AF', // abu-abu
+        headerBgColor = '#E5E7EB',
+        headerTextColor = '#111827',
+        borderColor = '#9CA3AF',
         borderWidth = 1,
+        isZebra = false,
     } = properties || {};
 
     if (!design_input || !design_result) {
@@ -31,15 +33,19 @@ const JmdTableComponent = ({ trialData, properties }) => {
         padding: '8px',
         border: `${borderWidth}px solid ${borderColor}`,
         textAlign: 'left',
+        fontWeight: 'bold',
     };
     const tdStyle = {
         padding: '8px',
         border: `${borderWidth}px solid ${borderColor}`,
     };
+    const zebraRowStyle = {
+        backgroundColor: '#F9FAFB' // gray-50
+    };
 
     return (
         <div className="text-sm">
-            <h3 className="font-bold mb-2 text-base">Tabel Rencana Campuran (Job Mix Design)</h3>
+            <h3 className="font-bold mb-2 text-base">{title}</h3>
             {showSsd && (
                 <table style={tableStyle}>
                     <thead>
@@ -48,7 +54,7 @@ const JmdTableComponent = ({ trialData, properties }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                        <tr style={isZebra ? zebraRowStyle : {}}>
                             <td style={tdStyle} width="50%">Semen</td>
                             <td style={tdStyle}>{design_result.cementContent?.toFixed(2)} kg</td>
                         </tr>
@@ -56,7 +62,7 @@ const JmdTableComponent = ({ trialData, properties }) => {
                             <td style={tdStyle}>Air</td>
                             <td style={tdStyle}>{design_result.waterContent?.toFixed(2)} kg</td>
                         </tr>
-                        <tr>
+                        <tr style={isZebra ? zebraRowStyle : {}}>
                             <td style={tdStyle}>Agregat Kasar</td>
                             <td style={tdStyle}>{design_result.coarseAggrWeightSSD?.toFixed(2)} kg</td>
                         </tr>
@@ -68,14 +74,14 @@ const JmdTableComponent = ({ trialData, properties }) => {
                 </table>
             )}
             {showCorrected && (
-                 <table style={{...tableStyle, marginTop: '16px'}}>
+                 <table style={{...tableStyle, marginTop: showSsd ? '16px' : '0px'}}>
                     <thead>
                         <tr>
                             <th colSpan="2" style={thStyle}>Proporsi per 1 m³ (Koreksi Lapangan)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                        <tr style={isZebra ? zebraRowStyle : {}}>
                             <td style={tdStyle} width="50%">Air Koreksi</td>
                             <td style={tdStyle}>{design_result.correctedWater?.toFixed(2)} kg</td>
                         </tr>
@@ -83,7 +89,7 @@ const JmdTableComponent = ({ trialData, properties }) => {
                             <td style={tdStyle}>Agregat Kasar Lembab</td>
                             <td style={tdStyle}>{design_result.correctedCoarseWeight?.toFixed(2)} kg</td>
                         </tr>
-                        <tr>
+                        <tr style={isZebra ? zebraRowStyle : {}}>
                             <td style={tdStyle}>Agregat Halus Lembab</td>
                             <td style={tdStyle}>{design_result.correctedFineWeight?.toFixed(2)} kg</td>
                         </tr>

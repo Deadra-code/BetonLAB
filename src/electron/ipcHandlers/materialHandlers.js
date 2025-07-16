@@ -1,18 +1,23 @@
 // Lokasi file: src/electron/ipcHandlers/materialHandlers.js
-// Deskripsi: Versi lengkap dengan semua handler untuk material dan tesnya.
-// Diperbarui untuk menyertakan metadata lembar data pada 'addMaterialTest'.
+// Deskripsi: Menambahkan pesan error yang lebih ramah pengguna.
 
 const log = require('electron-log');
 
-// Helper untuk menangani error spesifik dari database
+// --- PERBAIKAN: Helper `handleDbError` diperbarui ---
+// Menambahkan pemetaan untuk kode error umum ke pesan yang lebih mudah dimengerti.
 const handleDbError = (err, reject, context = {}, customMessages = {}) => {
     if (err) {
         log.error(`Database Error in ${context.operation || 'unknown operation'}`, { ...context, errorMessage: err.message, errorCode: err.code });
-        if (err.code && customMessages[err.code]) {
-            reject(new Error(customMessages[err.code]));
-        } else {
-            reject(new Error(err.message));
-        }
+        
+        // Pemetaan default untuk error umum
+        const defaultErrorMessages = {
+            'SQLITE_CONSTRAINT_UNIQUE': `Gagal: Nama "${context.name}" sudah ada. Silakan gunakan nama lain.`,
+            'SQLITE_CONSTRAINT': 'Terjadi konflik data di database.'
+        };
+
+        const message = customMessages[err.code] || defaultErrorMessages[err.code] || err.message;
+        reject(new Error(message));
+        
         return true;
     }
     return false;
@@ -50,7 +55,8 @@ function registerMaterialHandlers(ipcMain, db) {
         const cleanSource = (material.source || '').trim();
 
         stmt.run(material.material_type, cleanName, cleanSource, material.is_blend || 0, material.blend_components_json || '[]', new Date().toISOString(), function(err) {
-            if (handleDbError(err, reject, { operation: 'addMaterial', name: cleanName }, { 'SQLITE_CONSTRAINT': 'Gagal: Nama material sudah ada dalam database.' })) return;
+            // --- PERBAIKAN: Menyertakan konteks nama untuk pesan error yang lebih baik ---
+            if (handleDbError(err, reject, { operation: 'addMaterial', name: cleanName })) return;
             log.info(`Material added successfully. ID: ${this.lastID}, Name: ${cleanName}`);
             resolve({ id: this.lastID, ...material, name: cleanName, source: cleanSource });
         });
@@ -66,7 +72,7 @@ function registerMaterialHandlers(ipcMain, db) {
         const cleanSource = (source || '').trim();
         
         db.run("UPDATE materials SET name = ?, source = ? WHERE id = ?", [cleanName, cleanSource, id], function(err) {
-            if (handleDbError(err, reject, { operation: 'updateMaterial', materialId: id }, { 'SQLITE_CONSTRAINT': 'Gagal: Nama material sudah ada dalam database.' })) return;
+            if (handleDbError(err, reject, { operation: 'updateMaterial', materialId: id, name: cleanName })) return;
             log.info(`Material with ID: ${id} updated successfully.`);
             resolve({ success: true });
         });
@@ -141,7 +147,7 @@ function registerMaterialHandlers(ipcMain, db) {
         stmt.run(
             test.material_id, test.test_type, test.test_date, 
             test.input_data_json, test.result_data_json, test.image_path || null,
-            test.testedBy || '', test.checkedBy || '', test.testMethod || '', // Field baru
+            test.testedBy || '', test.checkedBy || '', test.testMethod || '',
             function(err) {
                 if (handleDbError(err, reject, { operation: 'addMaterialTest', materialId: test.material_id })) return;
                 log.info(`Material test added for material ID: ${test.material_id}. Test ID: ${this.lastID}`);

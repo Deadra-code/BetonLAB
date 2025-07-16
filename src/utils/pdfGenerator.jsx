@@ -45,12 +45,13 @@ export const ReportDocument = ({ layout, reportData, settings, pageSettings }) =
     </Document>
 );
 
-export const generatePdf = async ({ layout, reportData, settings, pageSettings }) => {
+export const generatePdf = async ({ layout, reportData, settings, pageSettings, notify }) => {
     if (!reportData) {
-        alert("Pilih data pratinjau terlebih dahulu untuk membuat laporan.");
+        notify.error("Pilih data pratinjau terlebih dahulu untuk membuat laporan.");
         throw new Error("Preview data is not selected.");
     }
     const doc = <ReportDocument layout={layout} reportData={reportData} settings={settings} pageSettings={pageSettings} />;
     const blob = await pdf(doc).toBlob();
     saveAs(blob, `Laporan - ${reportData.projectName || 'Proyek'}.pdf`);
+    notify.success("PDF berhasil dibuat dan unduhan dimulai.");
 };

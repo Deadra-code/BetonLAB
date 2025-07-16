@@ -206,8 +206,8 @@ const TrialItem = ({ trial, onSelect, onDelete, onDuplicate, isCompareMode, isSe
     );
 };
 
-const ProjectItem = ({ project, onSelectTrial, onCompareTrials, onNavigateToReportBuilder, onUpdateProject, onDeleteProject, onDuplicateProject, onSetProjectStatus }) => {
-    const [isOpen, setIsOpen] = useState(false);
+const ProjectItem = ({ project, onSelectTrial, onCompareTrials, onNavigateToReportBuilder, onUpdateProject, onDeleteProject, onDuplicateProject, onSetProjectStatus, initialOpen = false }) => {
+    const [isOpen, setIsOpen] = useState(initialOpen);
     const [isCompareMode, setIsCompareMode] = useState(false);
     const [selectedForComparison, setSelectedForComparison] = useState(new Set());
     const { trials, addTrial, deleteTrial } = useTrials(project.id);
@@ -335,9 +335,39 @@ const ProjectItem = ({ project, onSelectTrial, onCompareTrials, onNavigateToRepo
     );
 };
 
-export default function ProjectManager({ apiReady, onTrialSelect, onCompareTrials, onNavigateToReportBuilder }) {
+export default function ProjectManager({ apiReady, onTrialSelect, onCompareTrials, onNavigateToReportBuilder, initialProject, pendingNavigation, onPendingNavigationConsumed }) {
     const { projects, addProject, updateProject, deleteProject, loading, showArchived, setShowArchived, setProjectStatus, duplicateProject } = useProjects(apiReady);
     const [searchQuery, setSearchQuery] = useState('');
+    const [openProjectId, setOpenProjectId] = useState(null);
+
+    // PERBAIKAN: useEffect untuk menangani navigasi yang tertunda
+    useEffect(() => {
+        if (pendingNavigation) {
+            const { type, item } = pendingNavigation;
+            if (type === 'trial') {
+                setOpenProjectId(item.project_id);
+                // Menunggu Collapsible terbuka sebelum memilih trial
+                setTimeout(() => {
+                    const fullTrialData = {
+                        ...item,
+                        design_input: JSON.parse(item.design_input_json || '{}'),
+                        design_result: JSON.parse(item.design_result_json || '{}'),
+                    };
+                    onTrialSelect(fullTrialData);
+                    onPendingNavigationConsumed();
+                }, 100);
+            } else if (type === 'project') {
+                 setOpenProjectId(item.id);
+                 onPendingNavigationConsumed();
+            }
+        }
+    }, [pendingNavigation, onTrialSelect, onPendingNavigationConsumed]);
+    
+    useEffect(() => {
+        if (initialProject) {
+            setOpenProjectId(initialProject.id);
+        }
+    }, [initialProject]);
 
     const filteredProjects = useMemo(() => {
         if (!searchQuery) return projects;
@@ -387,6 +417,7 @@ export default function ProjectManager({ apiReady, onTrialSelect, onCompareTrial
                                 onDeleteProject={deleteProject}
                                 onDuplicateProject={duplicateProject}
                                 onSetProjectStatus={setProjectStatus}
+                                initialOpen={proj.id === openProjectId}
                             />
                         ))
                     ) : (

@@ -1,13 +1,24 @@
 // Lokasi file: src/features/Reporting/components/CombinedGradationChart.jsx
-// Deskripsi: Komponen untuk menampilkan grafik gradasi gabungan.
+// Deskripsi: Komponen grafik kini menerapkan styling dari properti.
 
 import React, { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 import { useActiveMaterialProperties } from '../../../hooks/useActiveMaterialProperties';
 
 const CombinedGradationChart = ({ trialData, properties, apiReady }) => {
     const { activeProperties } = useActiveMaterialProperties(apiReady);
-    const { title = "Grafik Gradasi Gabungan" } = properties || {};
+    
+    // Ekstrak properti kustomisasi
+    const {
+        title = "Grafik Gradasi Gabungan",
+        showGrid = true,
+        showLegend = true,
+        lineColor = "#16a34a",
+        lineWidth = 2,
+        showDataLabels = false,
+        axisFontSize = 10,
+        axisColor = '#666666',
+    } = properties || {};
     
     const chartData = useMemo(() => {
         if (!trialData?.design_input || !trialData?.design_result || activeProperties.fineAggregates.length === 0 || activeProperties.coarseAggregates.length === 0) {
@@ -54,12 +65,16 @@ const CombinedGradationChart = ({ trialData, properties, apiReady }) => {
             <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="size" type="number" scale="log" domain={[0.1, 100]} reversed ticks={[0.15, 0.3, 0.6, 1.18, 2.36, 4.75, 10, 20, 40, 100]} label={{ value: "Ukuran Saringan (mm)", position: "insideBottom", offset: -15 }} />
-                        <YAxis domain={[0, 100]} label={{ value: '% Lolos', angle: -90, position: 'insideLeft' }} />
+                        {showGrid && <CartesianGrid strokeDasharray="3 3" />}
+                        <XAxis dataKey="size" type="number" scale="log" domain={[0.1, 100]} reversed ticks={[0.15, 0.3, 0.6, 1.18, 2.36, 4.75, 10, 20, 40, 100]} tick={{ fontSize: axisFontSize, fill: axisColor }}>
+                           <Label value="Ukuran Saringan (mm)" offset={-15} position="insideBottom" />
+                        </XAxis>
+                        <YAxis domain={[0, 100]} tick={{ fontSize: axisFontSize, fill: axisColor }}>
+                           <Label value='% Lolos' angle={-90} position='insideLeft' style={{ textAnchor: 'middle' }} />
+                        </YAxis>
                         <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
-                        <Legend verticalAlign="top" />
-                        <Line type="monotone" dataKey="Gabungan" stroke="#16a34a" strokeWidth={2} dot={false} />
+                        {showLegend && <Legend verticalAlign="top" />}
+                        <Line type="monotone" dataKey="Gabungan" stroke={lineColor} strokeWidth={lineWidth} dot={false} label={showDataLabels ? { position: 'top', fontSize: 8 } : false} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>

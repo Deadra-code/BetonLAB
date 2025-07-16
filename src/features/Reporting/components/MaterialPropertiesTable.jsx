@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/MaterialPropertiesTable.jsx
-// Deskripsi: Komponen tabel properti material dengan visibilitas kolom dan styling kustom.
+// Deskripsi: Komponen tabel kini menerapkan semua properti styling.
 
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
@@ -19,6 +19,7 @@ const MaterialPropertiesTable = ({ trialData, properties }) => {
         headerTextColor = '#111827',
         borderColor = '#9CA3AF',
         borderWidth = 1,
+        isZebra = false,
     } = properties || {};
 
     if (!design_input) {
@@ -31,7 +32,6 @@ const MaterialPropertiesTable = ({ trialData, properties }) => {
         { name: 'Agregat Kasar', sg: design_input.sgCoarse, absorption: design_input.absorptionCoarse, moisture: design_input.moistureCoarse, bulkDensity: design_input.dryRoddedWeightCoarse, fm: '-' },
     ];
 
-    // Terapkan gaya kustom
     const tableStyle = {
         border: `${borderWidth}px solid ${borderColor}`,
         borderCollapse: 'collapse',
@@ -40,9 +40,13 @@ const MaterialPropertiesTable = ({ trialData, properties }) => {
         backgroundColor: headerBgColor,
         color: headerTextColor,
         border: `${borderWidth}px solid ${borderColor}`,
+        fontWeight: 'bold',
     };
     const tdStyle = {
         border: `${borderWidth}px solid ${borderColor}`,
+    };
+    const zebraRowStyle = {
+        backgroundColor: '#F9FAFB'
     };
 
     return (
@@ -60,8 +64,8 @@ const MaterialPropertiesTable = ({ trialData, properties }) => {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {data.map(mat => (
-                        <TableRow key={mat.name}>
+                    {data.map((mat, index) => (
+                        <TableRow key={mat.name} style={isZebra && index % 2 !== 0 ? zebraRowStyle : {}}>
                             <TableCell style={tdStyle} className="font-medium">{mat.name}</TableCell>
                             {showSg && <TableCell style={tdStyle}>{mat.sg}</TableCell>}
                             {showAbsorption && <TableCell style={tdStyle}>{mat.absorption}</TableCell>}

@@ -1,3 +1,6 @@
+// Lokasi file: src/utils/concreteCalculator.js
+// Deskripsi: Menambahkan validasi input yang lebih ketat untuk properti material.
+
 import { getWCRatio, waterAndAirContentData, coarseAggregateVolumeData } from '../data/sniData';
 
 /**
@@ -7,27 +10,31 @@ import { getWCRatio, waterAndAirContentData, coarseAggregateVolumeData } from '.
  * @throws {Error} If inputs are invalid or calculation cannot be completed.
  */
 export function calculateMixDesign(inputs) {
-    // 1. Validate that all necessary inputs are filled and are numbers
+    // 1. Validasi input dasar (harus ada dan numerik)
     const requiredFields = ['fc', 'stdDev', 'slump', 'maxAggrSize', 'sgCement', 'sgCoarse', 'sgFine', 'dryRoddedWeightCoarse', 'finenessModulus'];
     for (const field of requiredFields) {
-        if (inputs[field] === '' || isNaN(parseFloat(inputs[field]))) {
+        if (inputs[field] === '' || inputs[field] === null || isNaN(parseFloat(inputs[field]))) {
             throw new Error(`Input tidak valid atau kosong untuk: ${field}`);
         }
     }
     
-    if (parseFloat(inputs.moistureFine) > 20) {
-        throw new Error(`Kadar air agregat halus (${inputs.moistureFine}%) tidak realistis.`);
-    }
-    if (parseFloat(inputs.moistureCoarse) > 20) {
-        throw new Error(`Kadar air agregat kasar (${inputs.moistureCoarse}%) tidak realistis.`);
-    }
-    if (parseFloat(inputs.absorptionFine) > 20) {
-        throw new Error(`Nilai penyerapan agregat halus (${inputs.absorptionFine}%) tidak realistis.`);
-    }
-    if (parseFloat(inputs.absorptionCoarse) > 20) {
-        throw new Error(`Nilai penyerapan agregat kasar (${inputs.absorptionCoarse}%) tidak realistis.`);
-    }
+    // --- PERBAIKAN: Validasi Logis & Rentang Nilai ---
+    const validations = [
+        { check: parseFloat(inputs.fc) <= 0, message: "Kuat tekan (f'c) harus lebih besar dari 0." },
+        { check: parseFloat(inputs.sgCement) < 2.5 || parseFloat(inputs.sgCement) > 3.5, message: `Berat jenis semen (${inputs.sgCement}) tidak realistis.` },
+        { check: parseFloat(inputs.sgCoarse) < 2.0 || parseFloat(inputs.sgCoarse) > 3.5, message: `Berat jenis agregat kasar (${inputs.sgCoarse}) tidak realistis.` },
+        { check: parseFloat(inputs.sgFine) < 2.0 || parseFloat(inputs.sgFine) > 3.5, message: `Berat jenis agregat halus (${inputs.sgFine}) tidak realistis.` },
+        { check: parseFloat(inputs.dryRoddedWeightCoarse) < 1000 || parseFloat(inputs.dryRoddedWeightCoarse) > 2000, message: `Berat isi agregat kasar (${inputs.dryRoddedWeightCoarse} kg/m³) tidak realistis.` },
+        { check: parseFloat(inputs.moistureFine) > 20, message: `Kadar air agregat halus (${inputs.moistureFine}%) tidak realistis.` },
+        { check: parseFloat(inputs.moistureCoarse) > 20, message: `Kadar air agregat kasar (${inputs.moistureCoarse}%) tidak realistis.` },
+        { check: parseFloat(inputs.absorptionFine) > 10, message: `Nilai penyerapan agregat halus (${inputs.absorptionFine}%) sangat tinggi.` },
+        { check: parseFloat(inputs.absorptionCoarse) > 10, message: `Nilai penyerapan agregat kasar (${inputs.absorptionCoarse}%) sangat tinggi.` },
+    ];
 
+    for (const v of validations) {
+        if (v.check) throw new Error(v.message);
+    }
+    // --- Akhir Perbaikan ---
 
     // 2. Calculate Target Compressive Strength (f'cr)
     const fcr = parseFloat(inputs.fc) + 1.64 * parseFloat(inputs.stdDev);
@@ -52,7 +59,6 @@ export function calculateMixDesign(inputs) {
     let waterContent = waterAndAir.slump[slumpRange];
     const airContent = waterAndAir.air;
 
-    // PEMANTAPAN: Integrasi Admixture - Mengurangi kebutuhan air
     const waterReductionPercent = parseFloat(inputs.admixture?.waterReduction) || 0;
     if (waterReductionPercent > 0) {
         waterContent *= (1 - waterReductionPercent / 100);

@@ -2,9 +2,9 @@ import Papa from 'papaparse';
 import * as api from '../api/electronAPI';
 
 // Fungsi untuk mengekspor data satu trial (format key-value)
-export const exportTrialToCsv = async ({ trial }) => {
+export const exportTrialToCsv = async ({ trial, notify }) => {
     if (!trial || !trial.design_input || !trial.design_result) {
-        alert("Data desain atau hasil tidak lengkap untuk diekspor.");
+        notify.error("Data desain atau hasil tidak lengkap untuk diekspor.");
         return;
     }
 
@@ -46,16 +46,15 @@ export const exportTrialToCsv = async ({ trial }) => {
     });
 
     if (result.success) {
-        alert(`Data berhasil diekspor ke: ${result.path}`);
+        notify.success(`Data berhasil diekspor ke: ${result.path}`);
     } else if (result.error !== 'Save dialog canceled') {
-        alert(`Gagal mengekspor file: ${result.error}`);
+        notify.error(`Gagal mengekspor file: ${result.error}`);
     }
 };
 
-// PEMANTAPAN: Fungsi baru untuk mengekspor perbandingan trial (format tabular)
-export const exportComparisonToCsv = async ({ trials }) => {
+export const exportComparisonToCsv = async ({ trials, notify }) => {
     if (!trials || trials.length === 0) {
-        alert("Tidak ada data trial untuk diekspor.");
+        notify.error("Tidak ada data trial untuk diekspor.");
         return;
     }
 
@@ -102,8 +101,8 @@ export const exportComparisonToCsv = async ({ trials }) => {
     });
 
     if (result.success) {
-        alert(`Data perbandingan berhasil diekspor ke: ${result.path}`);
+        notify.success(`Data perbandingan berhasil diekspor ke: ${result.path}`);
     } else if (result.error !== 'Save dialog canceled') {
-        alert(`Gagal mengekspor file: ${result.error}`);
+        notify.error(`Gagal mengekspor file: ${result.error}`);
     }
 };

@@ -1,12 +1,13 @@
 // Lokasi file: src/features/Reporting/reportComponents.jsx
-// Deskripsi: Mendaftarkan komponen 'Info Kontak Klien' yang baru.
+// Deskripsi: Versi final dengan komponen baru, penghapusan Blok Skrip, dan logika render yang diperbarui.
 
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import {
     FileText, Columns3, BarChart2, PenLine, Type, ChevronsUpDown, Minus,
-    Image as ImageIcon, GripVertical, Heading1, Heading2, Box, Repeat,
-    ListChecks, AreaChart, TableProperties, Info, ArrowUpDown, Table, Code, Contact
+    Image as ImageIcon, GripVertical, Heading1, Box, Repeat,
+    ListChecks, AreaChart, TableProperties, Info, ArrowUpDown, Table, Contact,
+    QrCode, Pilcrow, Footprints
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/button';
@@ -29,11 +30,16 @@ import StrengthSummaryTable from './components/StrengthSummaryTable.jsx';
 import TrialInfoBlock from './components/TrialInfoBlock.jsx';
 import VerticalSpacer from './components/VerticalSpacer.jsx';
 import CustomTableComponent from './components/CustomTableComponent.jsx';
-import ScriptBlockComponent from './components/ScriptBlockComponent.jsx';
-import ClientInfoBlock from './components/ClientInfoBlock.jsx'; // BARU
+import ClientInfoBlock from './components/ClientInfoBlock.jsx';
+// Impor komponen baru
+import FooterComponent from './components/FooterComponent.jsx';
+import DynamicPlaceholderComponent from './components/DynamicPlaceholderComponent.jsx';
+import QrCodeComponent from './components/QrCodeComponent.jsx';
+
 
 const PlaceholderComponent = ({ name }) => <div className="p-4 text-center text-muted-foreground border-2 border-dashed">{name}</div>;
 
+// PERUBAHAN: Daftar komponen diperbarui
 export const AVAILABLE_COMPONENTS = [
     {
         group: 'Struktur & Layout',
@@ -41,23 +47,22 @@ export const AVAILABLE_COMPONENTS = [
             { id: 'section', name: 'Bagian', icon: <Box size={16}/>, type: 'layout', children: [] },
             { id: 'columns-2', name: '2 Kolom', icon: <Columns3 size={16}/>, type: 'layout', children: [[], []] },
             { id: 'columns-3', name: '3 Kolom', icon: <Columns3 size={16}/>, type: 'layout', children: [[], [], []] },
-            { id: 'page-break', name: 'Pemisah Halaman', icon: <ChevronsUpDown size={16}/>, type: 'layout' },
             { id: 'horizontal-line', name: 'Garis Horizontal', icon: <Minus size={16}/>, type: 'layout' },
             { id: 'vertical-spacer', name: 'Spasi Vertikal', icon: <ArrowUpDown size={16}/>, type: 'layout' },
+            { id: 'page-break', name: 'Pemisah Halaman', icon: <ChevronsUpDown size={16}/>, type: 'layout' },
+            { id: 'footer', name: 'Footer Halaman', icon: <Footprints size={16}/>, type: 'layout' },
         ]
     },
     {
         group: 'Komponen Data',
         items: [
             { id: 'trial-loop', name: 'Loop Trial', icon: <Repeat size={16}/>, type: 'data', children: [] },
-            { id: 'header', name: 'Kop Surat Perusahaan', icon: <Heading1 size={16}/>, type: 'data' },
-            { id: 'project-name', name: 'Nama Proyek', icon: <FileText size={16}/>, type: 'data' },
-            { id: 'client-name', name: 'Nama Klien', icon: <FileText size={16}/>, type: 'data' },
-            { id: 'client-info-block', name: 'Info Kontak Klien', icon: <Contact size={16}/>, type: 'data' }, // BARU
+            { id: 'header', name: 'Kop Surat', icon: <Heading1 size={16}/>, type: 'data' },
+            { id: 'client-info-block', name: 'Info Kontak Klien', icon: <Contact size={16}/>, type: 'data' },
             { id: 'trial-info-block', name: 'Info Trial Mix', icon: <Info size={16}/>, type: 'data' },
             { id: 'jmd-table', name: 'Tabel Job Mix', icon: <Columns3 size={16}/>, type: 'data' },
             { id: 'material-properties-table', name: 'Tabel Properti Material', icon: <ListChecks size={16}/>, type: 'data' },
-            { id: 'raw-strength-table', name: 'Tabel Data Mentah Uji Tekan', icon: <Columns3 size={16}/>, type: 'data' },
+            { id: 'raw-strength-table', name: 'Tabel Data Uji Tekan', icon: <Columns3 size={16}/>, type: 'data' },
             { id: 'strength-summary-table', name: 'Ringkasan Uji Tekan', icon: <TableProperties size={16}/>, type: 'data' },
             { id: 'strength-chart', name: 'Grafik Kuat Tekan', icon: <BarChart2 size={16}/>, type: 'data' },
             { id: 'sqc-chart', name: 'Grafik SQC', icon: <BarChart2 size={16}/>, type: 'data' },
@@ -65,13 +70,14 @@ export const AVAILABLE_COMPONENTS = [
         ]
     },
     {
-        group: 'Elemen Primitif',
+        group: 'Elemen Statis & Dinamis',
         items: [
             { id: 'custom-text', name: 'Kotak Teks', icon: <Type size={16}/>, type: 'static' },
+            { id: 'dynamic-placeholder', name: 'Placeholder Dinamis', icon: <Pilcrow size={16}/>, type: 'static' },
             { id: 'custom-table', name: 'Tabel Kustom', icon: <Table size={16}/>, type: 'static' },
             { id: 'custom-image', name: 'Gambar/Logo', icon: <ImageIcon size={16}/>, type: 'static' },
+            { id: 'qr-code', name: 'Kode QR', icon: <QrCode size={16}/>, type: 'static' },
             { id: 'signature-block', name: 'Blok Tanda Tangan', icon: <PenLine size={16}/>, type: 'static' },
-            { id: 'script-block', name: 'Blok Skrip', icon: <Code size={16}/>, type: 'static' },
         ]
     }
 ];
@@ -86,10 +92,17 @@ export const LibraryComponent = ({ component, ...props }) => (
 
 const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, settings, onPropertyChange, onDeleteComponent, apiReady }) => {
     const { properties = {} } = component;
-    const { marginTop = 2, marginBottom = 2 } = properties.appearance || {};
+    const { appearance = {} } = properties;
+    const { marginTop = 2, marginBottom = 2, padding = '0px', backgroundColor } = appearance;
 
-    const wrapperStyle = { marginTop: `${marginTop * 4}px`, marginBottom: `${marginBottom * 4}px` };
-    const baseStyle = "p-2 rounded";
+    const wrapperStyle = { 
+        marginTop: `${marginTop * 4}px`, 
+        marginBottom: `${marginBottom * 4}px`,
+        padding: padding,
+        backgroundColor: backgroundColor || 'transparent',
+    };
+    
+    const baseStyle = "rounded";
     const selectedStyle = "outline outline-2 outline-offset-2 outline-primary bg-primary/10";
 
     const shouldRender = checkConditions(properties.conditions, reportData);
@@ -105,29 +118,35 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
         }
 
         switch (component.id) {
+            // Komponen Data
             case 'header': return <HeaderComponent settings={settings} properties={properties} />;
+            case 'client-info-block': return <ClientInfoBlock reportData={reportData} properties={properties} />;
+            case 'trial-info-block': return <TrialInfoBlock trialData={trialData} properties={properties} />;
             case 'jmd-table': return <JmdTableComponent trialData={trialData} properties={properties} />;
-            case 'custom-text': return <CustomTextComponent properties={properties} />;
-            case 'custom-table': return <CustomTableComponent properties={properties} />;
-            case 'project-name': return <div className="font-bold text-lg">{reportData?.projectName || 'Nama Proyek'}</div>;
-            case 'client-name': return <div className="text-md">Klien: {reportData?.clientName || 'Nama Klien'}</div>;
-            case 'horizontal-line': return <hr className="my-4 border-t border-gray-400" />;
+            case 'material-properties-table': return <MaterialPropertiesTable trialData={trialData} properties={properties} />;
             case 'raw-strength-table': return <RawStrengthTestTable trialData={trialData} properties={properties} />;
+            case 'strength-summary-table': return <StrengthSummaryTable trialData={trialData} properties={properties} />;
             case 'strength-chart': return <StrengthChartComponent trialData={trialData} properties={properties} />;
             case 'sqc-chart': return <SqcChartComponent trialData={trialData} properties={properties} />;
-            case 'custom-image': return <CustomImageComponent properties={properties} instanceId={component.instanceId} onPropertyChange={onPropertyChange} />;
-            case 'signature-block': return <SignatureBlock properties={properties} />;
-            case 'material-properties-table': return <MaterialPropertiesTable trialData={trialData} properties={properties} />;
             case 'combined-gradation-chart': return <CombinedGradationChart trialData={trialData} properties={properties} apiReady={apiReady} />;
-            case 'strength-summary-table': return <StrengthSummaryTable trialData={trialData} properties={properties} />;
-            case 'trial-info-block': return <TrialInfoBlock trialData={trialData} properties={properties} />;
-            case 'client-info-block': return <ClientInfoBlock reportData={reportData} />; // BARU
+            
+            // Elemen Statis & Dinamis
+            case 'custom-text': return <CustomTextComponent properties={properties} />;
+            case 'dynamic-placeholder': return <DynamicPlaceholderComponent properties={properties} reportData={reportData} settings={settings} />;
+            case 'custom-table': return <CustomTableComponent properties={properties} />;
+            case 'custom-image': return <CustomImageComponent properties={properties} instanceId={component.instanceId} onPropertyChange={onPropertyChange} />;
+            case 'qr-code': return <QrCodeComponent properties={properties} reportData={reportData} settings={settings} />;
+            case 'signature-block': return <SignatureBlock properties={properties} />;
+            
+            // Struktur & Layout
+            case 'horizontal-line': return <hr style={{ borderWidth: properties.thickness || 1, borderColor: properties.color || '#9CA3AF', borderStyle: properties.style || 'solid', width: `${properties.width || 100}%`, margin: 'auto' }} />;
             case 'vertical-spacer': return <VerticalSpacer properties={properties} />;
-            case 'script-block': return <ScriptBlockComponent properties={properties} trialData={trialData} />;
+            case 'footer': return <FooterComponent properties={properties} />;
             case 'trial-loop':
                  return <TrialLoopingSection component={component} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onComponentClick={onClick} selectedComponentId={isSelected} onDeleteComponent={onDeleteComponent} apiReady={apiReady} />;
             
             case 'section':
+                // Implementasi render untuk 'section'
                 return (
                     <Droppable droppableId={component.instanceId}>
                         {(provided, snapshot) => (
@@ -151,6 +170,7 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
 
             case 'columns-2':
             case 'columns-3':
+                // Implementasi render untuk kolom
                 const numColumns = component.id === 'columns-3' ? 3 : 2;
                 const gridClassMap = { 2: 'grid-cols-2', 3: 'grid-cols-3' };
                 return (
