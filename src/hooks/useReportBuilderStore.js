@@ -135,8 +135,16 @@ const storeLogic = (set, get) => ({
                     }
 
                     if (Array.isArray(node.children)) {
-                        const found = findContainerById(node.children, droppableId);
-                        if (found) return found;
+                        // For columns, we need to check each column array
+                        if (node.id === 'columns') {
+                            for (const col of node.children) {
+                                const found = findContainerById(col, droppableId);
+                                if (found) return found;
+                            }
+                        } else {
+                            const found = findContainerById(node.children, droppableId);
+                            if (found) return found;
+                        }
                     }
                 }
                 return null;

@@ -170,19 +170,34 @@ const CanvasComponentInternal = ({ component, onClick, isSelected, reportData, s
                             <div key={colIndex} className="w-full">
                                 <Droppable droppableId={`${component.instanceId}-col-${colIndex}`}>
                                     {(provided, snapshot) => (
-                                        <div ref={provided.innerRef} {...provided.droppableProps} className={cn("p-2 border border-dashed border-gray-300 rounded-md min-h-[100px]", snapshot.isDraggingOver ? "bg-blue-100" : "bg-gray-50 dark:bg-gray-800/50")}>
-                                            {(!component.children[colIndex] || component.children[colIndex].length === 0) && <p className="text-xs text-center text-muted-foreground">Kolom {colIndex + 1}</p>}
-                                            {component.children[colIndex] && component.children[colIndex].map((child, index) => (
-                                                 <Draggable key={child.instanceId} draggableId={child.instanceId} index={index}>
-                                                     {(provided) => (
-                                                         <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="relative group">
-                                                             <CanvasComponent component={child} isSelected={isSelected} onClick={onClick} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onDeleteComponent={onDeleteComponent} apiReady={apiReady}/>
-                                                             <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 z-10" onClick={(e) => { e.stopPropagation(); onDeleteComponent(child.instanceId); }}><Trash2 size={12} /></Button>
-                                                         </div>
-                                                     )}
-                                                 </Draggable>
-                                            ))}
-                                            {provided.placeholder}
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.droppableProps}
+                                            className={cn(
+                                                "p-2 border border-dashed rounded-md min-h-[100px] flex flex-col",
+                                                snapshot.isDraggingOver
+                                                    ? "bg-blue-100 border-blue-400"
+                                                    : "bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600"
+                                            )}
+                                        >
+                                            <div className="flex-grow">
+                                                {component.children[colIndex] && component.children[colIndex].map((child, index) => (
+                                                    <Draggable key={child.instanceId} draggableId={child.instanceId} index={index}>
+                                                        {(provided) => (
+                                                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="relative group">
+                                                                <CanvasComponent component={child} isSelected={isSelected} onClick={onClick} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onDeleteComponent={onDeleteComponent} apiReady={apiReady}/>
+                                                                <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 z-10" onClick={(e) => { e.stopPropagation(); onDeleteComponent(child.instanceId); }}><Trash2 size={12} /></Button>
+                                                            </div>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                                {provided.placeholder}
+                                            </div>
+                                            {(!component.children[colIndex] || component.children[colIndex].length === 0) && (
+                                                <div className="text-xs text-center text-muted-foreground p-2">
+                                                    Kolom {colIndex + 1}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </Droppable>
