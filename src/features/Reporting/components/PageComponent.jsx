@@ -76,14 +76,14 @@ const PageComponent = ({
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
                                 className={cn(
-                                    "h-full",
+                                    "h-full min-h-[200mm]", // Menetapkan tinggi minimum untuk area drop
                                     snapshot.isDraggingOver && !isPageDropDisabled && 'bg-primary/5 rounded-lg',
                                     isPageDropDisabled && draggingComponent && "bg-red-100/50 border-red-300 rounded-lg"
                                 )}
                             >
                                 {page.components.length === 0 && !snapshot.isDraggingOver && (
-                                    <div className="w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center">
-                                        <p className="text-muted-foreground">Area Konten Halaman {pageIndex + 1}</p>
+                                    <div className="w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center text-center p-4">
+                                        <p className="text-muted-foreground">Area Konten Halaman {pageIndex + 1}.<br/>Seret komponen dari pustaka ke sini.</p>
                                     </div>
                                 )}
                                 {page.components.map((component, index) => (
