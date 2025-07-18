@@ -56,54 +56,60 @@ const PageComponent = ({
                     <Trash2 size={14} className="mr-1" /> Hapus Halaman
                 </Button>
             )}
-            <Droppable droppableId={`page-${pageIndex}`} isDropDisabled={isPageDropDisabled}>
-                {(provided, snapshot) => (
-                    <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        style={pageStyle}
-                        onClick={onDeselect}
-                        className={cn(
-                            "p-8 bg-white dark:bg-card shadow-lg mx-auto border",
-                            snapshot.isDraggingOver && !isPageDropDisabled && 'bg-primary/5',
-                            isPageDropDisabled && draggingComponent && "bg-red-100/50 border-red-300"
-                        )}
-                    >
-                        {page.length === 0 && !snapshot.isDraggingOver && (
-                            <div className="w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center">
-                                <p className="text-muted-foreground">Area Halaman {pageIndex + 1}. Seret komponen ke sini.</p>
-                            </div>
-                        )}
-                        {page.map((component, index) => (
-                            <ErrorBoundary key={component.instanceId}>
-                                <Draggable key={component.instanceId} draggableId={component.instanceId} index={index}>
-                                    {(provided) => (
-                                        <div
-                                            ref={provided.innerRef}
-                                            {...provided.draggableProps}
-                                            {...provided.dragHandleProps}
-                                        >
-                                            <CanvasComponent
-                                                component={component}
-                                                isSelected={selectedComponentId}
-                                                onClick={onComponentClick}
-                                                reportData={reportData}
-                                                settings={settings}
-                                                onPropertyChange={onPropertyChange}
-                                                onDeleteComponent={onDeleteComponent}
-                                                apiReady={apiReady}
-                                                onUpdateProject={onUpdateProject}
-                                                onUpdateTrial={onUpdateTrial}
-                                            />
-                                        </div>
-                                    )}
-                                </Draggable>
-                            </ErrorBoundary>
-                        ))}
-                        {provided.placeholder}
+            <div
+                style={pageStyle}
+                onClick={onDeselect}
+                className="bg-white dark:bg-card shadow-lg mx-auto border flex flex-col"
+            >
+                {/* Header Section */}
+                {page.header && (
+                    <div className="flex-shrink-0 p-8 pb-0">
+                         <CanvasComponent component={page.header} isSelected={selectedComponentId} onClick={onComponentClick} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onDeleteComponent={onDeleteComponent} apiReady={apiReady} onUpdateProject={onUpdateProject} onUpdateTrial={onUpdateTrial} />
                     </div>
                 )}
-            </Droppable>
+
+                {/* Body Section (Droppable Area) */}
+                <div className="flex-grow p-8">
+                    <Droppable droppableId={`page-${page.id}`} isDropDisabled={isPageDropDisabled}>
+                        {(provided, snapshot) => (
+                            <div
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                className={cn(
+                                    "h-full",
+                                    snapshot.isDraggingOver && !isPageDropDisabled && 'bg-primary/5 rounded-lg',
+                                    isPageDropDisabled && draggingComponent && "bg-red-100/50 border-red-300 rounded-lg"
+                                )}
+                            >
+                                {page.components.length === 0 && !snapshot.isDraggingOver && (
+                                    <div className="w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center">
+                                        <p className="text-muted-foreground">Area Konten Halaman {pageIndex + 1}</p>
+                                    </div>
+                                )}
+                                {page.components.map((component, index) => (
+                                    <ErrorBoundary key={component.instanceId}>
+                                        <Draggable key={component.instanceId} draggableId={component.instanceId} index={index}>
+                                            {(provided) => (
+                                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                                    <CanvasComponent component={component} isSelected={selectedComponentId} onClick={onComponentClick} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onDeleteComponent={onDeleteComponent} apiReady={apiReady} onUpdateProject={onUpdateProject} onUpdateTrial={onUpdateTrial}/>
+                                                </div>
+                                            )}
+                                        </Draggable>
+                                    </ErrorBoundary>
+                                ))}
+                                {provided.placeholder}
+                            </div>
+                        )}
+                    </Droppable>
+                </div>
+
+                {/* Footer Section */}
+                {page.footer && (
+                     <div className="flex-shrink-0 p-8 pt-0">
+                        <CanvasComponent component={page.footer} isSelected={selectedComponentId} onClick={onComponentClick} reportData={reportData} settings={settings} onPropertyChange={onPropertyChange} onDeleteComponent={onDeleteComponent} apiReady={apiReady} onUpdateProject={onUpdateProject} onUpdateTrial={onUpdateTrial}/>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
