@@ -214,7 +214,15 @@ const storeLogic = (set, get) => ({
             }
 
             if (movedItem) {
-                destContainer.splice(destination.index, 0, movedItem);
+                // Logika kustom untuk header dan footer
+                const isPageDrop = destContainerDef.id === 'page';
+                if (isPageDrop && movedItem.id === 'header') {
+                    destContainer.unshift(movedItem);
+                } else if (isPageDrop && movedItem.id === 'footer') {
+                    destContainer.push(movedItem);
+                } else {
+                    destContainer.splice(destination.index, 0, movedItem);
+                }
             }
         }));
     },
