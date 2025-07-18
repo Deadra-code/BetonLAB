@@ -1,9 +1,8 @@
 // Lokasi file: src/electron/ipcHandlers/settingsHandlers.js
-// Deskripsi: Handler untuk pengaturan, template, dan notifikasi.
+// Deskripsi: Penambahan validasi input yang ketat untuk memastikan integritas data pengaturan.
 
 const log = require('electron-log');
 
-// Helper untuk menangani error spesifik dari database
 const handleDbError = (err, reject, customMessages = {}) => {
     if (err) {
         log.error(`Database Error: ${err.message}`, { code: err.code });
@@ -17,6 +16,16 @@ const handleDbError = (err, reject, customMessages = {}) => {
     return false;
 };
 
+// Helper sederhana untuk validasi JSON
+const isJsonString = (str) => {
+    try {
+        JSON.parse(str);
+    } catch (e) {
+        return false;
+    }
+    return true;
+};
+
 function registerSettingsHandlers(ipcMain, db) {
     ipcMain.handle('settings:get-all', async () => new Promise((resolve, reject) => {
         db.all("SELECT key, value FROM settings", [], (err, rows) => {
@@ -27,7 +36,13 @@ function registerSettingsHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('settings:set', async (event, { key, value }) => new Promise((resolve, reject) => {
-        db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [key, value], (err) => {
+        // TAHAP 1: VALIDASI BACKEND
+        const cleanKey = key?.trim();
+        if (!cleanKey) return reject(new Error("Kunci pengaturan tidak boleh kosong."));
+        // Memastikan value adalah string, karena itu yang disimpan di DB
+        const valueToStore = String(value);
+
+        db.run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [cleanKey, valueToStore], (err) => {
             if (handleDbError(err, reject)) return;
             resolve({ success: true });
         });
@@ -41,8 +56,15 @@ function registerSettingsHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:add-test-template', async (event, template) => new Promise((resolve, reject) => {
+        // TAHAP 1: VALIDASI BACKEND
+        if (!template || typeof template !== 'object') return reject(new Error("Data template tidak valid."));
+        const cleanName = template.template_name?.trim();
+        if (!cleanName) return reject(new Error("Nama template tidak boleh kosong."));
+        if (!['fine_aggregate', 'coarse_aggregate'].includes(template.material_type)) return reject(new Error("Tipe material template tidak valid."));
+        if (!isJsonString(template.tests_json)) return reject(new Error("Format daftar tes tidak valid (bukan JSON)."));
+
         const stmt = db.prepare("INSERT INTO test_templates (template_name, material_type, tests_json) VALUES (?, ?, ?)");
-        stmt.run(template.template_name, template.material_type, template.tests_json, function(err) {
+        stmt.run(cleanName, template.material_type, template.tests_json, function(err) {
             if (handleDbError(err, reject)) return;
             log.info(`Test template added successfully. ID: ${this.lastID}`);
             resolve({ id: this.lastID, ...template });
@@ -51,6 +73,8 @@ function registerSettingsHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:delete-test-template', async (event, id) => new Promise((resolve, reject) => {
+        // TAHAP 1: VALIDASI BACKEND
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID template tidak valid.'));
         db.run("DELETE FROM test_templates WHERE id = ?", [id], function(err) {
             if (handleDbError(err, reject)) return;
             log.info(`Test template with ID: ${id} deleted successfully.`);
@@ -58,7 +82,6 @@ function registerSettingsHandlers(ipcMain, db) {
         });
     }));
 
-    // PERUBAHAN: Memperbarui query untuk menyertakan ID proyek dan trial
     ipcMain.handle('db:get-due-specimens', async () => {
         const sql = `
             SELECT 

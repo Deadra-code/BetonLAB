@@ -1,5 +1,5 @@
 // Lokasi file: src/api/electronAPI.js
-// Deskripsi: Menambahkan fungsi pembungkus untuk API manajemen sampel.
+// Deskripsi: Menambahkan fungsi pembungkus untuk API manajemen peralatan.
 
 const isApiReady = () => {
     if (window.api) return true;
@@ -13,10 +13,16 @@ export const getUsers = () => isApiReady() ? window.api.getUsers() : Promise.res
 export const addUser = (userData) => isApiReady() ? window.api.addUser(userData) : Promise.reject(new Error("API not ready"));
 export const deleteUser = (id) => isApiReady() ? window.api.deleteUser(id) : Promise.reject(new Error("API not ready"));
 
-// --- BARU: Sample Management ---
+// Sample Management
 export const createSampleReception = (data) => isApiReady() ? window.api.createSampleReception(data) : Promise.reject(new Error("API not ready"));
 export const getMyTasks = (technicianId) => isApiReady() ? window.api.getMyTasks(technicianId) : Promise.resolve([]);
-// -----------------------------
+
+// TAHAP 2: Equipment & Specimen Log API
+export const getEquipment = () => isApiReady() ? window.api.getEquipment() : Promise.resolve([]);
+export const addEquipment = (equipment) => isApiReady() ? window.api.addEquipment(equipment) : Promise.reject(new Error("API not ready"));
+export const updateEquipment = (equipment) => isApiReady() ? window.api.updateEquipment(equipment) : Promise.reject(new Error("API not ready"));
+export const deleteEquipment = (id) => isApiReady() ? window.api.deleteEquipment(id) : Promise.reject(new Error("API not ready"));
+export const getSpecimenLog = (concreteTestId) => isApiReady() ? window.api.getSpecimenLog(concreteTestId) : Promise.resolve([]);
 
 // Projects
 export const getProjects = (showArchived) => isApiReady() ? window.api.getProjects(showArchived) : Promise.resolve([]);

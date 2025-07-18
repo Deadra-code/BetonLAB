@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/HeaderComponent.jsx
-// Deskripsi: Komponen kop surat kini menerapkan styling dari properti.
+// Deskripsi: Perbaikan error "Not allowed to load local resource" dengan menggunakan data Base64.
 
 import React from 'react';
 
@@ -31,11 +31,14 @@ const HeaderComponent = ({ settings, properties }) => {
         color: subtitleColor,
     };
 
+    // PERBAIKAN: Gunakan `logoBase64` untuk sumber gambar.
+    const logoSrc = settings.logoBase64 ? `data:image/png;base64,${settings.logoBase64}` : null;
+
     return (
         <div className={`${containerClasses[layout]} p-2 border-b-2 border-black mb-4`}>
-            {settings.logoPath && (
+            {logoSrc && (
                 <img
-                    src={`file://${settings.logoPath}`}
+                    src={logoSrc}
                     alt="Logo"
                     style={{ width: `${logoSize}px`, height: `${logoSize}px` }}
                     className="object-contain mr-4"

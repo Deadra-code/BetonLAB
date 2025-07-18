@@ -1,15 +1,12 @@
 // Lokasi file: src/electron/ipcHandlers/materialHandlers.js
-// Deskripsi: Menambahkan pesan error yang lebih ramah pengguna.
+// Deskripsi: Penambahan validasi input yang ketat di semua handler untuk meningkatkan keamanan dan stabilitas.
 
 const log = require('electron-log');
 
-// --- PERBAIKAN: Helper `handleDbError` diperbarui ---
-// Menambahkan pemetaan untuk kode error umum ke pesan yang lebih mudah dimengerti.
 const handleDbError = (err, reject, context = {}, customMessages = {}) => {
     if (err) {
         log.error(`Database Error in ${context.operation || 'unknown operation'}`, { ...context, errorMessage: err.message, errorCode: err.code });
         
-        // Pemetaan default untuk error umum
         const defaultErrorMessages = {
             'SQLITE_CONSTRAINT_UNIQUE': `Gagal: Nama "${context.name}" sudah ada. Silakan gunakan nama lain.`,
             'SQLITE_CONSTRAINT': 'Terjadi konflik data di database.'
@@ -24,7 +21,6 @@ const handleDbError = (err, reject, context = {}, customMessages = {}) => {
 };
 
 function registerMaterialHandlers(ipcMain, db) {
-    // Mengambil semua material, dengan opsi untuk menampilkan yang diarsipkan
     ipcMain.handle('db:get-materials', async (event, showArchived = false) => new Promise((resolve, reject) => {
         const query = `SELECT * FROM materials ${showArchived ? '' : "WHERE status = 'active'"} ORDER BY material_type, name`;
         db.all(query, [], (err, rows) => {
@@ -33,11 +29,11 @@ function registerMaterialHandlers(ipcMain, db) {
         });
     }));
 
-    // Mengatur status material (aktif atau diarsipkan)
     ipcMain.handle('db:set-material-status', async (event, { id, status }) => new Promise((resolve, reject) => {
-        if (!['active', 'archived'].includes(status)) {
-            return reject(new Error('Invalid status value'));
-        }
+        // TAHAP 1: VALIDASI BACKEND
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID material tidak valid.'));
+        if (!['active', 'archived'].includes(status)) return reject(new Error('Status tidak valid.'));
+        
         db.run("UPDATE materials SET status = ? WHERE id = ?", [status, id], function(err) {
             if (handleDbError(err, reject, { operation: 'setMaterialStatus', materialId: id })) return;
             log.info(`Material ID ${id} status set to ${status}`);
@@ -45,17 +41,18 @@ function registerMaterialHandlers(ipcMain, db) {
         });
     }));
 
-    // Menambah material baru
     ipcMain.handle('db:add-material', async (event, material) => new Promise((resolve, reject) => {
-        const stmt = db.prepare("INSERT INTO materials (material_type, name, source, is_blend, blend_components_json, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+        // TAHAP 1: VALIDASI & SANITASI BACKEND
+        if (!material || typeof material !== 'object') return reject(new Error("Data material tidak valid."));
         const cleanName = material.name?.trim();
-        if (!cleanName) {
-            return reject(new Error("Nama material tidak boleh kosong."));
-        }
+        if (!cleanName) return reject(new Error("Nama material tidak boleh kosong."));
+        const validTypes = ['cement', 'fine_aggregate', 'coarse_aggregate'];
+        if (!validTypes.includes(material.material_type)) return reject(new Error("Tipe material tidak valid."));
+
+        const stmt = db.prepare("INSERT INTO materials (material_type, name, source, is_blend, blend_components_json, created_at) VALUES (?, ?, ?, ?, ?, ?)");
         const cleanSource = (material.source || '').trim();
 
         stmt.run(material.material_type, cleanName, cleanSource, material.is_blend || 0, material.blend_components_json || '[]', new Date().toISOString(), function(err) {
-            // --- PERBAIKAN: Menyertakan konteks nama untuk pesan error yang lebih baik ---
             if (handleDbError(err, reject, { operation: 'addMaterial', name: cleanName })) return;
             log.info(`Material added successfully. ID: ${this.lastID}, Name: ${cleanName}`);
             resolve({ id: this.lastID, ...material, name: cleanName, source: cleanSource });
@@ -63,12 +60,11 @@ function registerMaterialHandlers(ipcMain, db) {
         stmt.finalize();
     }));
 
-    // Memperbarui material yang ada
     ipcMain.handle('db:update-material', async (event, { id, name, source }) => new Promise((resolve, reject) => {
+        // TAHAP 1: VALIDASI & SANITASI BACKEND
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID material tidak valid.'));
         const cleanName = name?.trim();
-        if (!cleanName) {
-            return reject(new Error("Nama material tidak boleh kosong."));
-        }
+        if (!cleanName) return reject(new Error("Nama material tidak boleh kosong."));
         const cleanSource = (source || '').trim();
         
         db.run("UPDATE materials SET name = ?, source = ? WHERE id = ?", [cleanName, cleanSource, id], function(err) {
@@ -78,8 +74,11 @@ function registerMaterialHandlers(ipcMain, db) {
         });
     }));
 
-    // Menghapus material dengan pemeriksaan dependensi
     ipcMain.handle('db:delete-material', async (event, id) => {
+        // TAHAP 1: VALIDASI BACKEND
+        if (typeof id !== 'number' || id <= 0) {
+            return Promise.reject(new Error('ID material tidak valid.'));
+        }
         return new Promise((resolve, reject) => {
             const checkUsageQuery = `
                 SELECT COUNT(*) as count 
@@ -90,13 +89,8 @@ function registerMaterialHandlers(ipcMain, db) {
             `;
 
             db.get(checkUsageQuery, [id, id, id], (err, row) => {
-                if (err) {
-                    return handleDbError(err, reject, { operation: 'checkMaterialUsage', materialId: id });
-                }
-
-                if (row.count > 0) {
-                    return reject(new Error(`Material ini digunakan dalam ${row.count} trial mix dan tidak dapat dihapus.`));
-                }
+                if (err) return handleDbError(err, reject, { operation: 'checkMaterialUsage', materialId: id });
+                if (row.count > 0) return reject(new Error(`Material ini digunakan dalam ${row.count} trial mix dan tidak dapat dihapus.`));
 
                 db.run("DELETE FROM materials WHERE id = ?", [id], function(err) {
                     if (handleDbError(err, reject, { operation: 'deleteMaterial', materialId: id })) return;
@@ -107,7 +101,6 @@ function registerMaterialHandlers(ipcMain, db) {
         });
     });
 
-    // Mengambil material beserta tes aktifnya untuk digunakan dalam perhitungan
     ipcMain.handle('db:get-materials-with-active-tests', async () => {
         const query = `
             SELECT 
@@ -118,7 +111,6 @@ function registerMaterialHandlers(ipcMain, db) {
                     WHERE material_id = m.id AND is_active_for_design = 1
                 ) as active_tests 
             FROM materials m 
-            WHERE m.status = 'active'
             ORDER BY m.material_type, m.name
         `;
         return new Promise((resolve, reject) => {
@@ -129,16 +121,21 @@ function registerMaterialHandlers(ipcMain, db) {
         });
     });
 
-    // Mengambil semua tes untuk satu material spesifik
     ipcMain.handle('db:get-tests-for-material', async (event, materialId) => new Promise((resolve, reject) => {
+        // TAHAP 1: VALIDASI BACKEND
+        if (typeof materialId !== 'number' || materialId <= 0) return reject(new Error('ID material tidak valid.'));
         db.all("SELECT * FROM material_tests WHERE material_id = ? ORDER BY test_date DESC", [materialId], (err, rows) => {
             if (handleDbError(err, reject, { operation: 'getTestsForMaterial', materialId })) return;
             resolve(rows);
         });
     }));
 
-    // Menambah data tes material baru
     ipcMain.handle('db:add-material-test', async (event, test) => new Promise((resolve, reject) => {
+        // TAHAP 1: VALIDASI & SANITASI BACKEND
+        if (!test || typeof test !== 'object') return reject(new Error("Data tes tidak valid."));
+        if (typeof test.material_id !== 'number' || test.material_id <= 0) return reject(new Error("ID material untuk tes tidak valid."));
+        if (!test.test_type?.trim()) return reject(new Error("Tipe tes tidak boleh kosong."));
+
         const stmt = db.prepare(`INSERT INTO material_tests (
             material_id, test_type, test_date, input_data_json, result_data_json, image_path,
             testedBy, checkedBy, testMethod
@@ -147,7 +144,7 @@ function registerMaterialHandlers(ipcMain, db) {
         stmt.run(
             test.material_id, test.test_type, test.test_date, 
             test.input_data_json, test.result_data_json, test.image_path || null,
-            test.testedBy || '', test.checkedBy || '', test.testMethod || '',
+            test.testedBy?.trim() || '', test.checkedBy?.trim() || '', test.testMethod?.trim() || '',
             function(err) {
                 if (handleDbError(err, reject, { operation: 'addMaterialTest', materialId: test.material_id })) return;
                 log.info(`Material test added for material ID: ${test.material_id}. Test ID: ${this.lastID}`);
@@ -157,8 +154,12 @@ function registerMaterialHandlers(ipcMain, db) {
         stmt.finalize();
     }));
 
-    // Mengatur satu tes sebagai "aktif" untuk tipe tes tertentu pada sebuah material
     ipcMain.handle('db:set-active-material-test', async (event, { materialId, testType, testId }) => new Promise((resolve, reject) => {
+        // TAHAP 1: VALIDASI BACKEND
+        if (typeof materialId !== 'number' || materialId <= 0) return reject(new Error('ID material tidak valid.'));
+        if (typeof testId !== 'number' || testId <= 0) return reject(new Error('ID tes tidak valid.'));
+        if (!testType || typeof testType !== 'string') return reject(new Error('Tipe tes tidak valid.'));
+
         db.serialize(() => {
             db.run("BEGIN TRANSACTION", (err) => { if (handleDbError(err, reject, { operation: 'setActiveMaterialTestBegin' })) return; });
             db.run("UPDATE material_tests SET is_active_for_design = 0 WHERE material_id = ? AND test_type = ?", [materialId, testType], (err) => {
@@ -183,8 +184,9 @@ function registerMaterialHandlers(ipcMain, db) {
         });
     }));
 
-    // Menghapus data tes material
     ipcMain.handle('db:delete-material-test', async (event, id) => new Promise((resolve, reject) => {
+        // TAHAP 1: VALIDASI BACKEND
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID tes tidak valid.'));
         db.run("DELETE FROM material_tests WHERE id = ?", [id], function(err) {
             if (handleDbError(err, reject, { operation: 'deleteMaterialTest', testId: id })) return;
             log.info(`Material test with ID: ${id} deleted successfully.`);

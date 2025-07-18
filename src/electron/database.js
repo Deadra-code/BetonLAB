@@ -1,5 +1,5 @@
 // Lokasi file: src/electron/database.js
-// Deskripsi: Versi lengkap dengan semua migrasi hingga v16 (Fase 2 LIMS).
+// Deskripsi: Penambahan migrasi untuk menyisipkan template laporan JMD bawaan secara otomatis. Versi DB dinaikkan ke 19.
 
 const { app } = require('electron');
 const path = require('path');
@@ -8,8 +8,8 @@ const log = require('electron-log');
 const crypto = require('crypto');
 
 const dbPath = path.join(app.getPath('userData'), 'betonlab_v4.db');
-// Versi database saat ini adalah 16
-const LATEST_DB_VERSION = 16;
+// TAHAP FINAL: Versi database dinaikkan ke 19 untuk migrasi template
+const LATEST_DB_VERSION = 19;
 let db;
 
 // Helper untuk hash password
@@ -19,10 +19,51 @@ const hashPassword = (password) => {
     return `${salt}:${hash}`;
 };
 
+// TAHAP FINAL: JSON untuk template laporan JMD bawaan
+const JMD_TEMPLATE_JSON = JSON.stringify({
+  "layout": [
+    [
+      { "id": "header", "instanceId": "header-1718683201", "properties": {} },
+      { "id": "custom-text", "instanceId": "custom-text-1718683202", "properties": { "content": "LAPORAN RENCANA CAMPURAN BETON\n(JOB MIX DESIGN)", "fontSize": 18, "isBold": true, "align": "center" } },
+      { "id": "vertical-spacer", "instanceId": "vertical-spacer-1718683203", "properties": { "height": 20 } },
+      { "id": "columns", "instanceId": "columns-1718683204", "properties": { "columnCount": 2 }, "children": [ [ { "id": "client-info-block", "instanceId": "client-info-block-1718683205", "properties": {} } ], [ { "id": "trial-info-block", "instanceId": "trial-info-block-1718683206", "properties": {} } ] ] },
+      { "id": "vertical-spacer", "instanceId": "vertical-spacer-1718683207", "properties": { "height": 10 } },
+      { "id": "custom-text", "instanceId": "custom-text-1718683208", "properties": { "content": "Ringkasan Hasil Utama:", "fontSize": 12, "isBold": true } },
+      { "id": "columns", "instanceId": "columns-1718683209", "properties": { "columnCount": 2 }, "children": [ [ { "id": "dynamic-placeholder", "instanceId": "dynamic-placeholder-1718683210", "properties": { "label": "Faktor Air/Semen (FAS): ", "placeholder": "{{fas}}", "isBold": true } } ], [ { "id": "dynamic-placeholder", "instanceId": "dynamic-placeholder-1718683211", "properties": { "label": "Kadar Semen: ", "placeholder": "{{cementContent}}", "suffix": " kg/m³", "isBold": true } } ] ] },
+      { "id": "signature-block", "instanceId": "signature-block-1718683212", "properties": { "columnCount": 2, "label1": "Disiapkan oleh,", "name1": "", "position1": "Teknisi Lab", "label2": "Diperiksa oleh,", "name2": "", "position2": "Penyelia" } },
+      { "id": "footer", "instanceId": "footer-1718683213", "properties": {} }
+    ],
+    [
+      { "id": "header", "instanceId": "header-1718683214", "properties": {} },
+      { "id": "material-properties-table", "instanceId": "material-properties-table-1718683215", "properties": { "title": "1. Properti Material yang Digunakan" } },
+      { "id": "jmd-table", "instanceId": "jmd-table-1718683216", "properties": { "title": "2. Proporsi Rencana Campuran per 1 m³" } },
+      { "id": "combined-gradation-chart", "instanceId": "combined-gradation-chart-1718683217", "properties": { "title": "3. Grafik Gradasi Gabungan Agregat" } },
+      { "id": "footer", "instanceId": "footer-1718683218", "properties": {} }
+    ],
+    [
+      { "id": "header", "instanceId": "header-1718683219", "properties": {} },
+      { "id": "strength-chart", "instanceId": "strength-chart-1718683220", "properties": { "title": "4. Grafik Perkembangan Kuat Tekan Beton" } },
+      { "id": "strength-summary-table", "instanceId": "strength-summary-table-1718683221", "properties": { "title": "5. Ringkasan Hasil Uji Kuat Tekan Rata-rata" } },
+      { "id": "raw-strength-table", "instanceId": "raw-strength-table-1718683222", "properties": { "title": "6. Data Mentah Hasil Uji Kuat Tekan" } },
+      { "id": "footer", "instanceId": "footer-1718683223", "properties": {} }
+    ],
+    [
+      { "id": "header", "instanceId": "header-1718683224", "properties": {} },
+      { "id": "custom-text", "instanceId": "custom-text-1718683225", "properties": { "content": "7. Catatan & Kesimpulan\n\n- ...\n- ...\n- ...", "fontSize": 12, "isBold": true } },
+      { "id": "vertical-spacer", "instanceId": "vertical-spacer-1718683226", "properties": { "height": 40 } },
+      { "id": "signature-block", "instanceId": "signature-block-1718683227", "properties": { "columnCount": 2, "label1": "Menyetujui,", "name1": "", "position1": "Kepala Laboratorium", "label2": "", "name2": "", "position2": "" } },
+      { "id": "footer", "instanceId": "footer-1718683228", "properties": {} }
+    ]
+  ],
+  "pageSettings": { "size": "a4", "orientation": "portrait" }
+});
+
+
 async function runMigrations(currentVersion) {
     return new Promise((resolve, reject) => {
         db.serialize(async () => {
             try {
+                // Migrasi sebelumnya (v1-v18) tetap ada di sini...
                 if (currentVersion < 1) {
                     log.info('Migration to v1: Creating initial tables...');
                     db.run(`CREATE TABLE IF NOT EXISTS projects (id INTEGER PRIMARY KEY AUTOINCREMENT, projectName TEXT NOT NULL, clientName TEXT, createdAt TEXT NOT NULL)`);
@@ -139,6 +180,60 @@ async function runMigrations(currentVersion) {
                         });
                     }
                 }
+                if (currentVersion < 17) {
+                    log.info('Migration to v17: Creating equipment table...');
+                    await new Promise((res, rej) => db.run(`
+                        CREATE TABLE IF NOT EXISTS equipment (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL,
+                            serial_number TEXT UNIQUE,
+                            last_calibrated_date TEXT,
+                            next_calibration_date TEXT NOT NULL,
+                            status TEXT NOT NULL,
+                            notes TEXT
+                        )
+                    `, (err) => err ? rej(err) : res()));
+                }
+                if (currentVersion < 18) {
+                    log.info('Migration to v18: Creating specimen log table...');
+                    await new Promise((res, rej) => db.run(`
+                        CREATE TABLE IF NOT EXISTS specimen_log (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            concrete_test_id INTEGER NOT NULL,
+                            timestamp TEXT NOT NULL,
+                            user_id INTEGER,
+                            action TEXT NOT NULL,
+                            details TEXT,
+                            FOREIGN KEY (concrete_test_id) REFERENCES concrete_tests(id) ON DELETE CASCADE,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                        )
+                    `, (err) => err ? rej(err) : res()));
+                }
+
+                // TAHAP FINAL: Migrasi v19
+                if (currentVersion < 19) {
+                    log.info('Migration to v19: Seeding default JMD report template...');
+                    await new Promise((res, rej) => {
+                        const templateName = "Laporan JMD Beton (Bawaan)";
+                        db.get("SELECT COUNT(*) as count FROM report_layouts WHERE name = ?", [templateName], (err, row) => {
+                            if (err) return rej(err);
+                            if (row.count === 0) {
+                                db.run("INSERT INTO report_layouts (name, layout_object_json) VALUES (?, ?)", 
+                                    [templateName, JMD_TEMPLATE_JSON], 
+                                    (err) => {
+                                        if (err) return rej(err);
+                                        log.info(`Default template "${templateName}" seeded successfully.`);
+                                        res();
+                                    }
+                                );
+                            } else {
+                                log.info(`Default template "${templateName}" already exists. Skipping.`);
+                                res();
+                            }
+                        });
+                    });
+                }
+
 
                 db.run(`PRAGMA user_version = ${LATEST_DB_VERSION}`, resolve);
             } catch (err) {

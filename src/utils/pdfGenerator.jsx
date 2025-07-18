@@ -1,9 +1,12 @@
 // src/utils/pdfGenerator.jsx
+// Deskripsi: Integrasi logika checkConditions untuk memastikan output PDF cocok dengan pratinjau kanvas.
+
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
 import * as htmlToImage from 'html-to-image';
+import { checkConditions } from './reporting/reportUtils'; // TAHAP 3: Impor fungsi baru
 
 // Impor semua komponen PDF
 import HeaderPdf from '../features/Reporting/pdf_components/HeaderPdf.jsx';
@@ -31,7 +34,12 @@ const renderComponentInPdf = (component, reportData, settings) => {
     const { id, properties = {}, children = [], instanceId } = component;
     const trialData = component.isInsideLoop ? reportData : (reportData?.trials?.[0] || {});
 
-    // --- PERUBAHAN: Logika kolom dinamis ---
+    // TAHAP 3: Periksa kondisi sebelum merender ke PDF
+    const shouldRender = checkConditions(properties.conditions, reportData);
+    if (!shouldRender) {
+        return null;
+    }
+
     if (id === 'columns') {
         const numColumns = properties?.columnCount || 2;
         return (
@@ -57,7 +65,6 @@ const renderComponentInPdf = (component, reportData, settings) => {
         );
     }
 
-    // ... (sisa switch case tetap sama) ...
     switch (id) {
         case 'header': return <HeaderPdf settings={settings} properties={properties} />;
         case 'client-info-block': return <ClientInfoBlockPdf reportData={reportData} properties={properties} />;

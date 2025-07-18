@@ -1,5 +1,5 @@
 // Lokasi file: src/utils/reporting/reportUtils.js
-// Deskripsi: Diperbarui dengan semua placeholder yang tersedia.
+// Deskripsi: Penambahan fungsi checkConditions untuk logika rendering kondisional.
 
 export const ALL_PLACEHOLDERS = [
     { value: '{{nama_proyek}}', label: 'Nama Proyek' },
@@ -50,23 +50,37 @@ export const replacePlaceholders = (text, reportData, settings, pageContext = {}
     return text.replace(/\{\{.*?\}\}/g, match => replacements[match] !== undefined ? replacements[match] : match);
 };
 
+// TAHAP 3: Fungsi baru untuk memeriksa kondisi
 export const checkConditions = (conditions = [], reportData) => {
+    // Jika tidak ada kondisi, selalu tampilkan komponen
     if (!conditions || conditions.length === 0) return true;
+    
+    // Jika tidak ada data untuk diperiksa, jangan tampilkan komponen (kecuali kondisinya kosong)
     const trialData = reportData?.trials?.[0];
-    if (!trialData) return true;
+    if (!trialData) return false;
 
+    // Periksa setiap kondisi. Semua harus terpenuhi (logika AND)
     return conditions.every(cond => {
         const { field, operator, value } = cond;
+        
+        // Dapatkan nilai aktual dari data trial
         const actualValue = trialData.design_result?.[field];
+
+        // Jika field tidak ada di data atau value kondisi kosong, anggap kondisi terpenuhi
         if (actualValue === undefined || value === '') return true;
+
         const numActual = parseFloat(actualValue);
         const numValue = parseFloat(value);
+
+        // Jika salah satu bukan angka, batalkan perbandingan
+        if (isNaN(numActual) || isNaN(numValue)) return true;
+
         switch (operator) {
             case '>': return numActual > numValue;
             case '<': return numActual < numValue;
             case '==': return numActual === numValue;
             case '!=': return numActual !== numValue;
-            default: return true;
+            default: return true; // Operator tidak dikenal, anggap true
         }
     });
 };

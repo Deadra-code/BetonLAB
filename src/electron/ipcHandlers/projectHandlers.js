@@ -1,6 +1,5 @@
 // Lokasi file: src/electron/ipcHandlers/projectHandlers.js
-// Deskripsi: Versi lengkap dengan semua handler untuk proyek, trial, dan uji beton.
-// Diperbarui untuk menyertakan detail klien, permintaan pengujian, dan metadata lembar data.
+// Deskripsi: Penambahan logika untuk membuat log "Telah Diuji" saat hasil tes diperbarui.
 
 const log = require('electron-log');
 const fs = require('fs');
@@ -20,7 +19,19 @@ const handleDbError = (err, reject, context = {}, customMessages = {}) => {
     return false;
 };
 
+// TAHAP 2: Helper untuk membuat entri log
+const createSpecimenLog = (db, concreteTestId, userId, action, details = '') => {
+    const timestamp = new Date().toISOString();
+    db.run("INSERT INTO specimen_log (concrete_test_id, user_id, timestamp, action, details) VALUES (?, ?, ?, ?, ?)",
+        [concreteTestId, userId, timestamp, action, details],
+        (err) => {
+            if (err) log.error(`Failed to create specimen log for action "${action}" on test ID ${concreteTestId}:`, err);
+        }
+    );
+};
+
 function registerProjectHandlers(ipcMain, db) {
+    // ... (semua handler proyek dan trial lainnya tetap sama seperti di Tahap 1) ...
     // --- Project Handlers ---
     ipcMain.handle('db:get-projects', async (event, showArchived = false) => new Promise((resolve, reject) => {
         const query = `SELECT * FROM projects ${showArchived ? '' : "WHERE status = 'active'"} ORDER BY id DESC`;
@@ -31,9 +42,9 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:set-project-status', async (event, { id, status }) => new Promise((resolve, reject) => {
-        if (!['active', 'archived'].includes(status)) {
-            return reject(new Error('Invalid status value'));
-        }
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID proyek tidak valid.'));
+        if (!['active', 'archived'].includes(status)) return reject(new Error('Status tidak valid.'));
+        
         db.run("UPDATE projects SET status = ? WHERE id = ?", [status, id], function(err) {
             if (handleDbError(err, reject, { operation: 'setProjectStatus', projectId: id })) return;
             log.info(`Project ID ${id} status set to ${status}`);
@@ -42,9 +53,9 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:add-project', async (event, project) => new Promise((resolve, reject) => {
+        if (!project || typeof project !== 'object') return reject(new Error("Data proyek tidak valid."));
         const cleanProjectName = project.projectName?.trim();
-        if (!cleanProjectName) { return reject(new Error("Nama proyek tidak boleh kosong.")); }
-        const cleanClientName = project.clientName?.trim() || '';
+        if (!cleanProjectName) return reject(new Error("Nama proyek tidak boleh kosong."));
 
         const stmt = db.prepare(`INSERT INTO projects (
             projectName, clientName, createdAt, clientAddress, clientContactPerson, 
@@ -53,12 +64,18 @@ function registerProjectHandlers(ipcMain, db) {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
         
         stmt.run(
-            cleanProjectName, cleanClientName, new Date().toISOString(),
-            project.clientAddress || '', project.clientContactPerson || '',
-            project.clientContactNumber || '', project.requestNumber || '',
-            project.requestDate || '', project.projectNotes || '',
-            project.testingRequests || '', project.requestLetterPath || '',
-            project.assignedTo || '',
+            cleanProjectName,
+            project.clientName?.trim() || null,
+            new Date().toISOString(),
+            project.clientAddress?.trim() || null,
+            project.clientContactPerson?.trim() || null,
+            project.clientContactNumber?.trim() || null,
+            project.requestNumber?.trim() || null,
+            project.requestDate || null,
+            project.projectNotes?.trim() || null,
+            project.testingRequests?.trim() || null,
+            project.requestLetterPath || null,
+            project.assignedTo?.trim() || null,
             function(err) {
                 if (handleDbError(err, reject, { operation: 'addProject', projectName: cleanProjectName }, { 'SQLITE_CONSTRAINT': 'Nama proyek tidak boleh sama.' })) return;
                 log.info(`Project added successfully. ID: ${this.lastID}`);
@@ -69,9 +86,11 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:update-project', async (event, project) => new Promise((resolve, reject) => {
+        if (!project || typeof project !== 'object') return reject(new Error("Data proyek tidak valid."));
+        const id = project.id;
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID proyek tidak valid.'));
         const cleanProjectName = project.projectName?.trim();
-        if (!cleanProjectName) { return reject(new Error("Nama proyek tidak boleh kosong.")); }
-        const cleanClientName = project.clientName?.trim() || '';
+        if (!cleanProjectName) return reject(new Error("Nama proyek tidak boleh kosong."));
 
         const sql = `UPDATE projects SET 
             projectName = ?, clientName = ?, clientAddress = ?, clientContactPerson = ?,
@@ -80,21 +99,29 @@ function registerProjectHandlers(ipcMain, db) {
             WHERE id = ?`;
 
         db.run(sql, [
-            cleanProjectName, cleanClientName, project.clientAddress || '', 
-            project.clientContactPerson || '', project.clientContactNumber || '',
-            project.requestNumber || '', project.requestDate || '', 
-            project.projectNotes || '', project.testingRequests || '',
-            project.requestLetterPath || '', project.assignedTo || '',
-            project.id
+            cleanProjectName,
+            project.clientName?.trim() || null,
+            project.clientAddress?.trim() || null, 
+            project.clientContactPerson?.trim() || null,
+            project.clientContactNumber?.trim() || null,
+            project.requestNumber?.trim() || null,
+            project.requestDate || null, 
+            project.projectNotes?.trim() || null,
+            project.testingRequests?.trim() || null,
+            project.requestLetterPath || null,
+            project.assignedTo?.trim() || null,
+            id
         ], function(err) {
-            if (handleDbError(err, reject, { operation: 'updateProject', projectId: project.id })) return;
-            if (this.changes === 0) return reject(new Error(`Proyek dengan ID ${project.id} tidak ditemukan.`));
-            log.info(`Project with ID: ${project.id} updated successfully.`);
+            if (handleDbError(err, reject, { operation: 'updateProject', projectId: id })) return;
+            if (this.changes === 0) return reject(new Error(`Proyek dengan ID ${id} tidak ditemukan.`));
+            log.info(`Project with ID: ${id} updated successfully.`);
             resolve({ success: true });
         });
     }));
 
     ipcMain.handle('db:delete-project', async (event, id) => new Promise((resolve, reject) => {
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID proyek tidak valid.'));
+
         db.get("SELECT requestLetterPath FROM projects WHERE id = ?", [id], (err, row) => {
             if (err) { log.error(`Failed to get requestLetterPath for project ${id} before deletion:`, err); }
             if (row && row.requestLetterPath && fs.existsSync(row.requestLetterPath)) {
@@ -114,6 +141,9 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:duplicate-project', async (event, projectId) => {
+        if (typeof projectId !== 'number' || projectId <= 0) {
+            return Promise.reject(new Error('ID proyek untuk duplikasi tidak valid.'));
+        }
         return new Promise((resolve, reject) => {
             db.serialize(() => {
                 db.run("BEGIN TRANSACTION", (err) => { if (err) return reject(new Error(`Gagal memulai transaksi: ${err.message}`)); });
@@ -195,6 +225,8 @@ function registerProjectHandlers(ipcMain, db) {
 
     // --- Trial Handlers ---
     ipcMain.handle('db:get-trials-for-project', async (event, projectId) => new Promise((resolve, reject) => {
+        if (typeof projectId !== 'number' || projectId <= 0) return reject(new Error('ID proyek tidak valid.'));
+        
         db.all("SELECT * FROM project_trials WHERE project_id = ? ORDER BY id DESC", [projectId], (err, rows) => {
             if (handleDbError(err, reject, { operation: 'getTrials', projectId })) return;
             resolve(rows);
@@ -210,9 +242,14 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:add-trial', async (event, trial) => new Promise((resolve, reject) => {
+        if (!trial || typeof trial !== 'object') return reject(new Error("Data trial tidak valid."));
+        if (typeof trial.project_id !== 'number' || trial.project_id <= 0) return reject(new Error("ID proyek untuk trial tidak valid."));
+        const cleanTrialName = trial.trial_name?.trim();
+        if (!cleanTrialName) return reject(new Error("Nama trial tidak boleh kosong."));
+
         const stmt = db.prepare("INSERT INTO project_trials (project_id, trial_name, design_input_json, design_result_json, created_at, notes) VALUES (?, ?, ?, ?, ?, ?)");
-        stmt.run(trial.project_id, trial.trial_name, trial.design_input_json, trial.design_result_json, new Date().toISOString(), trial.notes || '', function(err) {
-            if (handleDbError(err, reject, { operation: 'addTrial', trialName: trial.trial_name })) return;
+        stmt.run(trial.project_id, cleanTrialName, trial.design_input_json, trial.design_result_json, new Date().toISOString(), trial.notes?.trim() || '', function(err) {
+            if (handleDbError(err, reject, { operation: 'addTrial', trialName: cleanTrialName })) return;
             log.info(`Trial added successfully to project ${trial.project_id}. Trial ID: ${this.lastID}`);
             resolve({ id: this.lastID, ...trial });
         });
@@ -220,8 +257,13 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:update-trial', async (event, trial) => new Promise((resolve, reject) => {
+        if (!trial || typeof trial !== 'object') return reject(new Error("Data trial tidak valid."));
         const { id, trial_name, design_input_json, design_result_json, notes } = trial;
-        db.run("UPDATE project_trials SET trial_name = ?, design_input_json = ?, design_result_json = ?, notes = ? WHERE id = ?", [trial_name, design_input_json, design_result_json, notes || '', id], function(err) {
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID trial tidak valid.'));
+        const cleanTrialName = trial_name?.trim();
+        if (!cleanTrialName) return reject(new Error("Nama trial tidak boleh kosong."));
+
+        db.run("UPDATE project_trials SET trial_name = ?, design_input_json = ?, design_result_json = ?, notes = ? WHERE id = ?", [cleanTrialName, design_input_json, design_result_json, notes?.trim() || '', id], function(err) {
             if (handleDbError(err, reject, { operation: 'updateTrial', trialId: id })) return;
             log.info(`Trial with ID: ${id} updated successfully.`);
             resolve({ success: true });
@@ -229,6 +271,7 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:delete-trial', async (event, id) => new Promise((resolve, reject) => {
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID trial tidak valid.'));
         db.run("DELETE FROM project_trials WHERE id = ?", [id], function(err) {
             if (handleDbError(err, reject, { operation: 'deleteTrial', trialId: id })) return;
             log.info(`Trial with ID: ${id} deleted successfully.`);
@@ -238,16 +281,20 @@ function registerProjectHandlers(ipcMain, db) {
 
     // --- Concrete Test Handlers ---
     ipcMain.handle('db:add-concrete-test', async (event, test) => new Promise((resolve, reject) => {
+        if (!test || typeof test !== 'object') return reject(new Error("Data tes tidak valid."));
+        if (typeof test.trial_id !== 'number' || test.trial_id <= 0) return reject(new Error("ID trial untuk tes tidak valid."));
+        if (!test.specimen_id?.trim()) return reject(new Error("ID spesimen tidak boleh kosong."));
+
         const stmt = db.prepare(`INSERT INTO concrete_tests (
             trial_id, specimen_id, test_type, casting_date, testing_date, 
             age_days, input_data_json, result_data_json, specimen_shape, 
             curing_method, status, testedBy, checkedBy, testMethod
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
         stmt.run(
-            test.trial_id, test.specimen_id, test.test_type, test.casting_date, 
+            test.trial_id, test.specimen_id.trim(), test.test_type, test.casting_date, 
             test.testing_date, test.age_days, test.input_data_json, 
             test.result_data_json, test.specimen_shape, test.curing_method, 
-            test.status, test.testedBy || '', test.checkedBy || '', test.testMethod || '',
+            test.status, test.testedBy?.trim() || '', test.checkedBy?.trim() || '', test.testMethod?.trim() || '',
             function(err) {
                 if (handleDbError(err, reject, { operation: 'addConcreteTest', trialId: test.trial_id })) return;
                 log.info(`Concrete test added for trial ID: ${test.trial_id}. Specimen ID: ${test.specimen_id}`);
@@ -258,6 +305,7 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:get-tests-for-trial', async (event, trialId) => new Promise((resolve, reject) => {
+        if (typeof trialId !== 'number' || trialId <= 0) return reject(new Error('ID trial tidak valid.'));
         db.all("SELECT * FROM concrete_tests WHERE trial_id = ? ORDER BY id DESC", [trialId], (err, rows) => {
             if (handleDbError(err, reject, { operation: 'getTestsForTrial', trialId })) return;
             resolve(rows);
@@ -265,26 +313,39 @@ function registerProjectHandlers(ipcMain, db) {
     }));
 
     ipcMain.handle('db:update-concrete-test', async (event, test) => new Promise((resolve, reject) => {
+        if (!test || typeof test !== 'object') return reject(new Error("Data tes tidak valid."));
         const { id, specimen_id, testing_date, age_days, input_data_json, result_data_json, 
                 specimen_shape, curing_method, status, casting_date, 
-                testedBy, checkedBy, testMethod } = test;
+                testedBy, checkedBy, testMethod, updated_by_user_id } = test;
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID tes tidak valid.'));
+        if (!specimen_id?.trim()) return reject(new Error("ID spesimen tidak boleh kosong."));
+
         const sql = `UPDATE concrete_tests SET 
             specimen_id = ?, testing_date = ?, age_days = ?, input_data_json = ?, 
             result_data_json = ?, specimen_shape = ?, curing_method = ?, status = ?, 
             casting_date = ?, testedBy = ?, checkedBy = ?, testMethod = ? 
             WHERE id = ?`;
         db.run(sql, [
-            specimen_id, testing_date, age_days, input_data_json, result_data_json, 
+            specimen_id.trim(), testing_date, age_days, input_data_json, result_data_json, 
             specimen_shape, curing_method, status, casting_date, 
-            testedBy || '', checkedBy || '', testMethod || '', id
+            testedBy?.trim() || '', checkedBy?.trim() || '', testMethod?.trim() || '', id
         ], (err) => {
             if (handleDbError(err, reject, { operation: 'updateConcreteTest', testId: id })) return;
+            
+            // TAHAP 2: Buat log "Telah Diuji" jika status berubah menjadi 'Telah Diuji'
+            if (status === 'Telah Diuji') {
+                const result = JSON.parse(result_data_json || '{}');
+                const details = `Hasil: ${result.strength_MPa?.toFixed(2) || 'N/A'} MPa. Diperiksa oleh: ${checkedBy || 'N/A'}`;
+                createSpecimenLog(db, id, updated_by_user_id, 'Telah Diuji', details);
+            }
+
             log.info(`Concrete test with ID: ${id} updated successfully.`);
             resolve({ success: true });
         });
     }));
 
     ipcMain.handle('db:delete-concrete-test', async (event, id) => new Promise((resolve, reject) => {
+        if (typeof id !== 'number' || id <= 0) return reject(new Error('ID tes tidak valid.'));
         db.run("DELETE FROM concrete_tests WHERE id = ?", [id], function(err) {
             if (handleDbError(err, reject, { operation: 'deleteConcreteTest', testId: id })) return;
             log.info(`Concrete test with ID: ${id} deleted successfully.`);
@@ -294,7 +355,10 @@ function registerProjectHandlers(ipcMain, db) {
 
     // --- Global Search & Reporting ---
     ipcMain.handle('db:global-search', async (event, query) => {
-        const searchQuery = `%${query}%`;
+        const cleanQuery = typeof query === 'string' ? query.trim() : '';
+        if (cleanQuery.length < 2) return { projects: [], trials: [], materials: [] };
+        const searchQuery = `%${cleanQuery}%`;
+        
         try {
             const projectsPromise = new Promise((resolve, reject) => { db.all("SELECT * FROM projects WHERE projectName LIKE ? LIMIT 5", [searchQuery], (err, rows) => err ? reject(err) : resolve(rows)); });
             const trialsPromise = new Promise((resolve, reject) => { const sql = `SELECT pt.*, p.projectName FROM project_trials pt JOIN projects p ON pt.project_id = p.id WHERE pt.trial_name LIKE ? LIMIT 5`; db.all(sql, [searchQuery], (err, rows) => err ? reject(err) : resolve(rows)); });
@@ -308,6 +372,8 @@ function registerProjectHandlers(ipcMain, db) {
     });
 
     ipcMain.handle('report:get-full-data', async (event, projectId) => {
+        if (typeof projectId !== 'number' || projectId <= 0) return Promise.reject(new Error('ID proyek tidak valid.'));
+
         log.info(`Fetching full report data for project ID: ${projectId}`);
         const getProjectDetails = new Promise((resolve, reject) => { db.get("SELECT * FROM projects WHERE id = ?", [projectId], (err, row) => err ? reject(err) : resolve(row)); });
         const getProjectTrials = new Promise((resolve, reject) => { db.all("SELECT * FROM project_trials WHERE project_id = ?", [projectId], (err, rows) => err ? reject(err) : resolve(rows)); });

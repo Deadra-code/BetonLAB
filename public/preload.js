@@ -1,5 +1,5 @@
 // Lokasi file: public/preload.js
-// Deskripsi: Mengekspos API baru untuk manajemen sampel.
+// Deskripsi: Mengekspos API baru untuk manajemen peralatan dan log benda uji.
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -10,10 +10,16 @@ contextBridge.exposeInMainWorld('api', {
     addUser: (userData) => ipcRenderer.invoke('users:add', userData),
     deleteUser: (id) => ipcRenderer.invoke('users:delete', id),
     
-    // --- BARU: Sample Management ---
+    // Sample Management
     createSampleReception: (data) => ipcRenderer.invoke('samples:reception-create', data),
     getMyTasks: (technicianId) => ipcRenderer.invoke('samples:get-my-tasks', technicianId),
-    // -----------------------------
+    
+    // TAHAP 2: Equipment & Specimen Log API
+    getEquipment: () => ipcRenderer.invoke('equipment:get-all'),
+    addEquipment: (equipment) => ipcRenderer.invoke('equipment:add', equipment),
+    updateEquipment: (equipment) => ipcRenderer.invoke('equipment:update', equipment),
+    deleteEquipment: (id) => ipcRenderer.invoke('equipment:delete', id),
+    getSpecimenLog: (concreteTestId) => ipcRenderer.invoke('specimen:get-log', concreteTestId),
 
     // Projects
     getProjects: (showArchived) => ipcRenderer.invoke('db:get-projects', showArchived),
@@ -51,7 +57,7 @@ contextBridge.exposeInMainWorld('api', {
     updateConcreteTest: (test) => ipcRenderer.invoke('db:update-concrete-test', test),
     deleteConcreteTest: (id) => ipcRenderer.invoke('db:delete-concrete-test', id),
     
-    // ... sisa API tetap sama ...
+    // Settings, Files, etc.
     getSettings: () => ipcRenderer.invoke('settings:get-all'),
     setSetting: (key, value) => ipcRenderer.invoke('settings:set', { key, value }),
     openImageDialog: () => ipcRenderer.invoke('dialog:open-image'),

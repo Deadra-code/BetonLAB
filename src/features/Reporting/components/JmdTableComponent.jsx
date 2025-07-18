@@ -1,12 +1,11 @@
 // Lokasi file: src/features/Reporting/components/JmdTableComponent.jsx
-// Deskripsi: Komponen kini menerapkan styling dan properti kustom.
+// Deskripsi: Komponen kini menampilkan placeholder yang lebih informatif saat data tidak tersedia.
 
 import React from 'react';
 
 const JmdTableComponent = ({ trialData, properties }) => {
     const { design_input, design_result } = trialData || {};
 
-    // Ekstrak properti kustomisasi dengan nilai default
     const {
         title = "Tabel Rencana Campuran (Job Mix Design)",
         showCorrected = true,
@@ -18,8 +17,9 @@ const JmdTableComponent = ({ trialData, properties }) => {
         isZebra = false,
     } = properties || {};
 
+    // TAHAP 2: Placeholder yang lebih cerdas
     if (!design_input || !design_result) {
-        return <div className="p-4 text-center text-muted-foreground border-2 border-dashed">Data JMD tidak tersedia</div>;
+        return <div className="p-4 text-center text-muted-foreground border-2 border-dashed">Tabel JMD (Pilih 'Data Pratinjau' untuk melihat data)</div>;
     }
 
     const tableStyle = {

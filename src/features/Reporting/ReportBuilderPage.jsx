@@ -1,7 +1,8 @@
 // Lokasi file: src/features/Reporting/ReportBuilderPage.jsx
-// Deskripsi: Perbaikan pada cara mengambil state dari Zustand/Zundo untuk mencegah error dan memastikan UI reaktif.
+// Deskripsi: Mengambil fungsi `updateProject` dan `updateTrial` dari hooks
+// dan meneruskannya sebagai props ke ReportBuilderV2.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
@@ -17,9 +18,9 @@ import ReportBuilderV2 from './ReportBuilderV2';
 import { useReportLayouts } from '../../hooks/useReportLayouts';
 import ReportPreviewModal from './components/ReportPreviewModal';
 import { useProjects } from '../../hooks/useProjects';
+import { useTrials } from '../../hooks/useTrials';
 import { useReportBuilderStore } from '../../hooks/useReportBuilderStore';
 
-// Dialog "Simpan Sebagai" (tidak berubah)
 const SaveAsDialog = ({ open, onOpenChange, onConfirm, activeTemplateName }) => {
     const [name, setName] = useState('');
     useEffect(() => {
@@ -37,21 +38,13 @@ export default function ReportBuilderPage({ context, apiReady }) {
     const { settings } = useSettings(apiReady);
     const { notify } = useNotifier();
     const { layouts, addLayout, updateLayout, deleteLayout } = useReportLayouts(apiReady);
-    const { projects } = useProjects(apiReady);
+    // TAHAP 4: Ambil fungsi `updateProject` dari hook
+    const { projects, updateProject } = useProjects(apiReady);
 
-    // --- PERBAIKAN: Mengambil state dan actions dari store dengan benar ---
-    
-    // 1. Mengambil state yang dibutuhkan oleh UI dari store.
-    // Ini akan membuat komponen re-render saat state ini berubah.
     const { layout, pageSettings, temporal } = useReportBuilderStore();
-    
-    // 2. Mengambil state undo/redo dengan aman, memberikan nilai default jika 'temporal' belum ada.
     const pastStates = temporal?.pastStates || [];
     const futureStates = temporal?.futureStates || [];
-
-    // 3. Mengambil actions. Actions tidak berubah, jadi bisa diambil dari getState() secara statis.
     const { undo, redo } = useReportBuilderStore.temporal.getState();
-    // ----------------------------------------------------------------
 
     const [previewData, setPreviewData] = useState(null);
     const [selectedProject, setSelectedProject] = useState(null);
@@ -60,6 +53,10 @@ export default function ReportBuilderPage({ context, apiReady }) {
     const [activeTemplate, setActiveTemplate] = useState(null);
     const [isSaveAsDialogOpen, setIsSaveAsDialogOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+    // TAHAP 4: Ambil fungsi `updateTrial` dari hook
+    const activeTrialId = previewData?.trials?.[0]?.id;
+    const { updateTrial } = useTrials(activeTrialId);
 
     useEffect(() => {
         const fetchPreviewData = async () => {
@@ -81,10 +78,14 @@ export default function ReportBuilderPage({ context, apiReady }) {
         fetchPreviewData();
     }, [selectedProject, apiReady, notify]);
     
-    const handleLayoutChange = () => { /* Fungsi ini tidak lagi diperlukan karena state dikelola oleh Zustand */ };
+    const initialLayout = useMemo(() => {
+        return activeTemplate ? JSON.parse(activeTemplate.layout_object_json || '{}') : undefined;
+    }, [activeTemplate]);
+
+    const handleLayoutChange = () => {};
     const handleSaveAsNew = () => setIsSaveAsDialogOpen(true);
     const handleConfirmSaveAs = (name) => { addLayout({ name, layout_object_json: JSON.stringify({ layout, pageSettings }) }); setIsSaveAsDialogOpen(false); };
-    const handleUpdateCurrent = async () => { if (activeTemplate) { await updateLayout({ ...activeTemplate, layout_object_json: JSON.stringify({ layout, pageSettings }) }); } };
+    const handleUpdateCurrent = async () => { if (activeTemplate) { await updateLayout({ ...activeTemplate, layout_object_json: JSON.stringify({ layout, pageSettings }) }); notify.success("Template berhasil disimpan."); } };
     const handleDeleteCurrent = () => { if (activeTemplate) { deleteLayout(activeTemplate.id); setActiveTemplate(null); } };
     const handleNewTemplate = () => setActiveTemplate(null);
     const handlePreviewReport = () => { if (layout.flat().length === 0) { notify.error("Layout laporan kosong."); return; } setIsPreviewOpen(true); };
@@ -102,9 +103,12 @@ export default function ReportBuilderPage({ context, apiReady }) {
                     <div className="flex items-center gap-2 border p-2 rounded-lg">
                          <Tv className="h-5 w-5 text-muted-foreground" />
                          <Label className="text-sm font-semibold">Data Pratinjau:</Label>
-                         <Select onValueChange={(id) => setSelectedProject(projects.find(p => p.id === parseInt(id)))} value={selectedProject?.id || ''}>
+                         <Select 
+                            onValueChange={(id) => setSelectedProject(projects.find(p => p.id === parseInt(id)))} 
+                            value={String(selectedProject?.id || '')}
+                         >
                             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Pilih Proyek..." /></SelectTrigger>
-                            <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.projectName}</SelectItem>)}</SelectContent>
+                            <SelectContent>{projects.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.projectName}</SelectItem>)}</SelectContent>
                          </Select>
                     </div>
                     <div className="flex items-center gap-2">
@@ -142,8 +146,10 @@ export default function ReportBuilderPage({ context, apiReady }) {
                             reportData={previewData}
                             settings={settings}
                             onLayoutChange={handleLayoutChange}
-                            initialLayout={activeTemplate ? JSON.parse(activeTemplate.layout_object_json || '{}') : undefined}
+                            initialLayout={initialLayout}
                             apiReady={apiReady}
+                            onUpdateProject={updateProject}
+                            onUpdateTrial={updateTrial}
                         />
                     )}
                 </div>

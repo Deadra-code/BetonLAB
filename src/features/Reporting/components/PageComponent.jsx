@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/PageComponent.jsx
-// Deskripsi: Menambahkan handler onClick pada area halaman untuk membatalkan seleksi.
+// Deskripsi: Menerima props onUpdateProject/onUpdateTrial dan meneruskannya ke CanvasComponent.
 
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
@@ -7,22 +7,41 @@ import { CanvasComponent } from '../reportComponents';
 import { Button } from '../../../components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import { useReportBuilderStore } from '../../../hooks/useReportBuilderStore';
+import ErrorBoundary from '../../../components/ErrorBoundary';
 
 const PAGE_DIMENSIONS = {
     a4: { width: 210, height: 297 },
     letter: { width: 215.9, height: 279.4 },
 };
 
-// PERUBAHAN: Menambahkan prop onDeselect
-const PageComponent = ({ page, pageIndex, onComponentClick, onDeletePage, onDeleteComponent, selectedComponentId, reportData, settings, onPropertyChange, apiReady, pageSettings, onDeselect }) => {
+const PageComponent = ({ 
+    page, 
+    pageIndex, 
+    onComponentClick, 
+    onDeletePage, 
+    onDeleteComponent, 
+    selectedComponentId, 
+    reportData, 
+    settings, 
+    onPropertyChange, 
+    apiReady, 
+    pageSettings, 
+    onDeselect,
+    onUpdateProject,
+    onUpdateTrial
+}) => {
     
     const { size = 'a4', orientation = 'portrait' } = pageSettings || {};
     const dimensions = PAGE_DIMENSIONS[size];
+    const draggingComponent = useReportBuilderStore(state => state.draggingComponent);
 
     const pageStyle = {
         width: orientation === 'portrait' ? `${dimensions.width}mm` : `${dimensions.height}mm`,
         minHeight: orientation === 'portrait' ? `${dimensions.height}mm` : `${dimensions.width}mm`,
     };
+
+    const isPageDropDisabled = draggingComponent ? !draggingComponent.rules.validParents.includes('page') : false;
 
     return (
         <div className="mb-8 p-2 bg-gray-400/30 rounded-lg relative group/page">
@@ -37,17 +56,17 @@ const PageComponent = ({ page, pageIndex, onComponentClick, onDeletePage, onDele
                     <Trash2 size={14} className="mr-1" /> Hapus Halaman
                 </Button>
             )}
-            <Droppable droppableId={`page-${pageIndex}`}>
+            <Droppable droppableId={`page-${pageIndex}`} isDropDisabled={isPageDropDisabled}>
                 {(provided, snapshot) => (
                     <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         style={pageStyle}
-                        // PERUBAHAN: Menambahkan event onClick untuk memanggil fungsi onDeselect
                         onClick={onDeselect}
                         className={cn(
                             "p-8 bg-white dark:bg-card shadow-lg mx-auto border",
-                            snapshot.isDraggingOver && 'bg-primary/5'
+                            snapshot.isDraggingOver && !isPageDropDisabled && 'bg-primary/5',
+                            isPageDropDisabled && draggingComponent && "bg-red-100/50 border-red-300"
                         )}
                     >
                         {page.length === 0 && !snapshot.isDraggingOver && (
@@ -55,16 +74,15 @@ const PageComponent = ({ page, pageIndex, onComponentClick, onDeletePage, onDele
                                 <p className="text-muted-foreground">Area Halaman {pageIndex + 1}. Seret komponen ke sini.</p>
                             </div>
                         )}
-                        {page.map((component) => (
-                            <Draggable key={component.instanceId} draggableId={component.instanceId} index={page.indexOf(component)}>
-                                {(provided) => (
-                                    <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        {...provided.dragHandleProps}
-                                        className="relative group/component"
-                                    >
-                                        <div className={cn(selectedComponentId === component.instanceId && "outline outline-2 outline-offset-2 outline-primary rounded-md")}>
+                        {page.map((component, index) => (
+                            <ErrorBoundary key={component.instanceId}>
+                                <Draggable key={component.instanceId} draggableId={component.instanceId} index={index}>
+                                    {(provided) => (
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            {...provided.dragHandleProps}
+                                        >
                                             <CanvasComponent
                                                 component={component}
                                                 isSelected={selectedComponentId}
@@ -74,22 +92,13 @@ const PageComponent = ({ page, pageIndex, onComponentClick, onDeletePage, onDele
                                                 onPropertyChange={onPropertyChange}
                                                 onDeleteComponent={onDeleteComponent}
                                                 apiReady={apiReady}
+                                                onUpdateProject={onUpdateProject}
+                                                onUpdateTrial={onUpdateTrial}
                                             />
                                         </div>
-                                        <Button
-                                            variant="destructive"
-                                            size="icon"
-                                            className="absolute top-0 right-0 h-6 w-6 opacity-0 group-hover/component:opacity-100 transition-opacity z-10"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onDeleteComponent(component.instanceId);
-                                            }}
-                                        >
-                                            <Trash2 size={12} />
-                                        </Button>
-                                    </div>
-                                )}
-                            </Draggable>
+                                    )}
+                                </Draggable>
+                            </ErrorBoundary>
                         ))}
                         {provided.placeholder}
                     </div>
