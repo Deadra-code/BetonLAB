@@ -41,6 +41,7 @@ import QrCodeComponent from './components/QrCodeComponent.jsx';
 import { ProjectForm } from '../Projects/components/ProjectForm.jsx';
 // PERUBAHAN: Impor JobMixDesign untuk digunakan dalam dialog
 import JobMixDesign from '../Projects/JobMixDesign.jsx';
+import CompressiveStrengthTest from '../Projects/CompressiveStrengthTest.jsx';
 
 const PlaceholderComponent = ({ name }) => <div className="p-4 text-center text-muted-foreground border-2 border-dashed">{name}</div>;
 
@@ -71,11 +72,11 @@ export const AVAILABLE_COMPONENTS = [
             // PERUBAHAN: Tandai tabel JMD dan Material sebagai dapat diedit
             { id: 'jmd-table', name: 'Tabel Job Mix', icon: <Columns3 size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
             { id: 'material-properties-table', name: 'Tabel Properti Material', icon: <ListChecks size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
-            { id: 'raw-strength-table', name: 'Tabel Data Uji Tekan', icon: <Columns3 size={16}/>, type: 'data', rules: commonRules },
+            { id: 'raw-strength-table', name: 'Tabel Data Uji Tekan', icon: <Columns3 size={16}/>, type: 'data', isEditable: true, editContext: 'compressiveTest', rules: commonRules },
             { id: 'strength-summary-table', name: 'Ringkasan Uji Tekan', icon: <TableProperties size={16}/>, type: 'data', rules: commonRules },
             { id: 'strength-chart', name: 'Grafik Kuat Tekan', icon: <BarChart2 size={16}/>, type: 'data', rules: commonRules },
             { id: 'sqc-chart', name: 'Grafik SQC', icon: <BarChart2 size={16}/>, type: 'data', rules: commonRules },
-            { id: 'combined-gradation-chart', name: 'Grafik Gradasi Gabungan', icon: <AreaChart size={16}/>, type: 'data', rules: commonRules },
+            { id: 'combined-gradation-chart', name: 'Grafik Gradasi Gabungan', icon: <AreaChart size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
         ]
     },
     {
@@ -136,6 +137,35 @@ const EditTrigger = ({ component, reportData, onUpdateProject, onUpdateTrial, ap
                         <JobMixDesign
                             trial={trialData}
                             onSave={onUpdateTrial}
+                            apiReady={apiReady}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+
+    if (editContext === 'compressiveTest') {
+        const trialData = reportData?.trials?.[0];
+        if (!trialData) return null;
+
+        return (
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" className="absolute top-0 right-7 h-6 w-6 z-10 opacity-0 group-hover/component:opacity-100 transition-opacity">
+                        <Pencil size={12} />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-7xl h-[95vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Manajemen Data Uji Tekan: {trialData.trial_name}</DialogTitle>
+                        <DialogDescription>
+                            Lihat, tambah, atau hapus data pengujian kuat tekan untuk trial mix ini. Perubahan akan disimpan secara otomatis.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-grow overflow-y-auto p-1">
+                        <CompressiveStrengthTest
+                            trialId={trialData.id}
                             apiReady={apiReady}
                         />
                     </div>
