@@ -1,12 +1,13 @@
 // src/utils/pdfGenerator.jsx
-// Deskripsi: Integrasi logika checkConditions untuk memastikan output PDF cocok dengan pratinjau kanvas.
+// Deskripsi: Diperbarui untuk menangani struktur layout halaman { header, components, footer }
+// dan menambahkan rendering untuk komponen baru.
 
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
 import * as htmlToImage from 'html-to-image';
-import { checkConditions } from './reporting/reportUtils'; // TAHAP 3: Impor fungsi baru
+import { checkConditions } from './reporting/reportUtils';
 
 // Impor semua komponen PDF
 import HeaderPdf from '../features/Reporting/pdf_components/HeaderPdf.jsx';
@@ -20,6 +21,8 @@ import MaterialPropertiesTablePdf from '../features/Reporting/pdf_components/Mat
 import StrengthSummaryTablePdf from '../features/Reporting/pdf_components/StrengthSummaryTablePdf.jsx';
 import ChartImagePdf from '../features/Reporting/pdf_components/ChartImagePdf.jsx';
 import { QrCodePdf, CustomImagePdf, DynamicPlaceholderPdf, FooterPdf, CustomTablePdf } from '../features/Reporting/pdf_components/OtherComponentsPdf.jsx';
+import LocationDatePdf from '../features/Reporting/pdf_components/LocationDatePdf.jsx';
+
 
 const styles = StyleSheet.create({
     page: { fontFamily: 'Helvetica', fontSize: 10, paddingTop: 35, paddingBottom: 65, paddingHorizontal: 35, lineHeight: 1.5, flexDirection: 'column' },
@@ -34,7 +37,6 @@ const renderComponentInPdf = (component, reportData, settings) => {
     const { id, properties = {}, children = [], instanceId } = component;
     const trialData = component.isInsideLoop ? reportData : (reportData?.trials?.[0] || {});
 
-    // TAHAP 3: Periksa kondisi sebelum merender ke PDF
     const shouldRender = checkConditions(properties.conditions, reportData);
     if (!shouldRender) {
         return null;
@@ -86,6 +88,7 @@ const renderComponentInPdf = (component, reportData, settings) => {
         case 'horizontal-line': return <View style={{ borderBottomWidth: properties.thickness || 1, borderBottomColor: properties.color || '#9CA3AF', marginVertical: 10 }} />;
         case 'vertical-spacer': return <View style={{ height: properties.height || 20 }} />;
         case 'page-break': return <View style={styles.pageBreak} />;
+        case 'location-date': return <LocationDatePdf properties={properties} reportData={reportData} settings={settings} />;
         case 'footer': return null;
         default: return <View key={instanceId} style={{ border: '1px dashed grey', padding: 5, marginVertical: 2 }}><Text style={{ color: 'grey', fontSize: 8 }}>[Komponen: {component.name}]</Text></View>;
     }
@@ -93,18 +96,20 @@ const renderComponentInPdf = (component, reportData, settings) => {
 
 export const ReportDocument = ({ layout, reportData, settings, pageSettings }) => (
     <Document author="BetonLAB" title={`Laporan - ${reportData.projectName}`}>
-        {layout.map((pageComponents, pageIndex) => {
-            const footerComponent = pageComponents.find(c => c.id === 'footer');
+        {layout.map((page, pageIndex) => {
+            const { header, components, footer } = page;
+            
             return (
                 <Page key={pageIndex} size={pageSettings.size.toUpperCase()} orientation={pageSettings.orientation} style={styles.page}>
                     <View style={{ flexGrow: 1 }}>
-                        {pageComponents.map(component => component.id !== 'footer' && (
+                        {header && renderComponentInPdf(header, reportData, settings)}
+                        {components.map(component => (
                             <React.Fragment key={component.instanceId}>
                                 {renderComponentInPdf(component, reportData, settings)}
                             </React.Fragment>
                         ))}
                     </View>
-                    {footerComponent && <FooterPdf properties={footerComponent.properties} pageNumber={pageIndex + 1} totalPages={layout.length} />}
+                    {footer && <FooterPdf properties={footer.properties} pageNumber={pageIndex + 1} totalPages={layout.length} />}
                 </Page>
             );
         })}
@@ -119,6 +124,7 @@ export const generatePdf = async ({ layout, reportData, settings, pageSettings, 
     const layoutWithImages = JSON.parse(JSON.stringify(layout));
     const chartComponentIds = [];
     const findChartsRecursive = (nodes) => {
+        if (!Array.isArray(nodes)) return;
         for (const component of nodes) {
             if (['strength-chart', 'sqc-chart', 'combined-gradation-chart'].includes(component.id)) {
                 chartComponentIds.push(component.instanceId);
@@ -132,7 +138,12 @@ export const generatePdf = async ({ layout, reportData, settings, pageSettings, 
             }
         }
     };
-    layoutWithImages.forEach(page => findChartsRecursive(page));
+    
+    layoutWithImages.forEach(page => {
+        if (page.header) findChartsRecursive([page.header]);
+        if (page.components) findChartsRecursive(page.components);
+        if (page.footer) findChartsRecursive([page.footer]);
+    });
     
     for (const id of chartComponentIds) {
         const node = document.getElementById(`chart-container-${id}`);
@@ -155,7 +166,9 @@ export const generatePdf = async ({ layout, reportData, settings, pageSettings, 
                     }
                     return false;
                 };
-                layoutWithImages.forEach(page => updateImageInLayout(page));
+                layoutWithImages.forEach(page => {
+                    if (updateImageInLayout([page.header, ...page.components, page.footer].filter(Boolean))) return;
+                });
             } catch (error) {
                 console.error('Gagal mengonversi grafik ke gambar:', error);
                 notify.error(`Gagal memproses grafik untuk komponen ID: ${id}`);

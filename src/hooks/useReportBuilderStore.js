@@ -1,5 +1,8 @@
 // src/hooks/useReportBuilderStore.js
-// DESKRIPSI: Refactor state management untuk memisahkan header/footer dari komponen utama.
+// DESKRIPSI: Menambahkan logika "rehydration" pada `initializeLayout`.
+// Saat layout dimuat dari database, setiap komponen akan digabungkan dengan
+// definisi lengkapnya (termasuk properti 'rules') untuk mencegah error.
+// PERBAIKAN: Mengganti panggilan `toast.info` yang salah menjadi `toast`.
 
 import { create } from 'zustand';
 import { produce } from 'immer';
@@ -27,6 +30,52 @@ const createNewPage = () => ({
     footer: null,
 });
 
+const PAGE_DIMENSIONS = {
+    a4: { width: 210, height: 297 },
+    letter: { width: 215.9, height: 279.4 },
+};
+const PAGE_VERTICAL_MARGIN_MM = 40; 
+
+// ========================================================================
+// === FUNGSI BARU: Rehydration Logic ===
+// ========================================================================
+const rehydrateNode = (node) => {
+    if (!node || !node.id) return node;
+
+    const definition = AVAILABLE_COMPONENTS.flatMap(g => g.items).find(c => c.id === node.id);
+    if (!definition) {
+        console.warn(`Component definition not found for id: ${node.id}`);
+        return node;
+    }
+
+    // Gabungkan definisi default dengan data instance, data instance lebih diutamakan
+    const rehydratedNode = {
+        ...definition,
+        ...node,
+        properties: { ...definition.properties, ...node.properties },
+    };
+
+    // Lakukan rehidrasi secara rekursif untuk children
+    if (node.children && Array.isArray(node.children)) {
+        if (node.id === 'columns') {
+            rehydratedNode.children = node.children.map(column => Array.isArray(column) ? column.map(rehydrateNode) : []);
+        } else {
+            rehydratedNode.children = node.children.map(rehydrateNode);
+        }
+    }
+
+    return rehydratedNode;
+};
+
+const rehydrateLayout = (layoutData) => {
+    if (!Array.isArray(layoutData)) return [];
+    return layoutData.map(page => ({
+        header: page.header ? rehydrateNode(page.header) : null,
+        components: Array.isArray(page.components) ? page.components.map(rehydrateNode) : [],
+        footer: page.footer ? rehydrateNode(page.footer) : null,
+    }));
+};
+
 
 const storeLogic = (set, get) => ({
     // === STATE ===
@@ -37,11 +86,14 @@ const storeLogic = (set, get) => ({
 
     // === ACTIONS ===
     initializeLayout: (initialData) => {
-        let layout = initialData?.layout;
-        if (!layout || !Array.isArray(layout) || layout.length === 0 || !layout[0].hasOwnProperty('components')) {
-             layout = [createNewPage()];
+        let layoutToProcess = initialData?.layout;
+        if (!layoutToProcess || !Array.isArray(layoutToProcess) || layoutToProcess.length === 0 || !layoutToProcess[0].hasOwnProperty('components')) {
+             layoutToProcess = [createNewPage()];
         }
 
+        // PERBAIKAN: Panggil fungsi rehidrasi di sini
+        const hydratedLayout = rehydrateLayout(layoutToProcess);
+        
         const pageSettings = initialData?.pageSettings || { size: 'a4', orientation: 'portrait' };
         
         const temporalState = get().temporal;
@@ -50,7 +102,7 @@ const storeLogic = (set, get) => ({
         }
 
         set({
-            layout: layout,
+            layout: hydratedLayout,
             pageSettings: pageSettings,
             selectedComponentId: null,
         });
@@ -229,7 +281,7 @@ const storeLogic = (set, get) => ({
             
             if (draggingComponent.rules.maxInstancesPerPage) {
                 const page = draft.layout[destPageIndex];
-                const count = page.components.filter(c => c.id === draggingComponent.id).length;
+                let count = page.components.filter(c => c.id === draggingComponent.id).length;
                 if (page.header?.id === draggingComponent.id) count++;
                 if (page.footer?.id === draggingComponent.id) count++;
                 
@@ -240,7 +292,6 @@ const storeLogic = (set, get) => ({
             }
 
             let movedItem;
-            // --- Hapus dari sumber ---
             if (source.droppableId.startsWith('library-group')) {
                 const componentToClone = draggingComponent;
                 movedItem = { 
@@ -265,21 +316,47 @@ const storeLogic = (set, get) => ({
                 }
             }
 
-            // --- Tambahkan ke tujuan ---
             if (movedItem) {
                 const destPage = draft.layout[destPageIndex];
                 if (movedItem.id === 'header') {
-                    if (destPage.header) { // Jika sudah ada, pindahkan yang lama ke komponen
+                    if (destPage.header) {
                         destPage.components.unshift(destPage.header);
                     }
                     destPage.header = movedItem;
                 } else if (movedItem.id === 'footer') {
-                     if (destPage.footer) { // Jika sudah ada, pindahkan yang lama ke komponen
+                     if (destPage.footer) {
                         destPage.components.push(destPage.footer);
                     }
                     destPage.footer = movedItem;
                 } else {
                     destContainer.splice(destination.index, 0, movedItem);
+                }
+
+                const pageSettings = draft.pageSettings;
+                const pageDimensions = PAGE_DIMENSIONS[pageSettings.size] || PAGE_DIMENSIONS.a4;
+                const maxContentHeight = (pageSettings.orientation === 'portrait' ? pageDimensions.height : pageDimensions.width) - PAGE_VERTICAL_MARGIN_MM;
+
+                const calculatePageHeight = (page) => {
+                    let totalHeight = 0;
+                    if (page.header) totalHeight += page.header.estimatedHeight || 0;
+                    if (page.footer) totalHeight += page.footer.estimatedHeight || 0;
+                    totalHeight += page.components.reduce((sum, comp) => sum + (comp.estimatedHeight || 0), 0);
+                    return totalHeight;
+                };
+
+                let currentPageIndex = destPageIndex;
+                let currentPage = draft.layout[currentPageIndex];
+                let currentHeight = calculatePageHeight(currentPage);
+
+                if (destContainer === currentPage.components && currentHeight > maxContentHeight) {
+                    const overflowingComponent = destContainer.splice(destination.index, 1)[0];
+                    let nextPage = draft.layout[currentPageIndex + 1];
+                    if (!nextPage) {
+                        draft.layout.push(createNewPage());
+                        nextPage = draft.layout[currentPageIndex + 1];
+                    }
+                    nextPage.components.unshift(overflowingComponent);
+                    toast(`Konten penuh, komponen dipindahkan ke halaman ${currentPageIndex + 2}.`, { icon: '➡️' });
                 }
             }
         }));

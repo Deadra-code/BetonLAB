@@ -1,6 +1,6 @@
 // src/features/Reporting/components/builder/property-panels/ComponentPropertiesPanel.jsx
 // Deskripsi: Komponen ini bertindak sebagai dispatcher, memilih dan merender panel properti
-// yang sesuai berdasarkan ID komponen yang dipilih.
+// yang sesuai berdasarkan ID komponen yang dipilih. Diperbarui dengan semua panel baru.
 
 import React from 'react';
 import {
@@ -10,21 +10,42 @@ import {
     GenericTablePanel,
     GenericChartPanel,
     SignaturePanel,
-    CustomTablePanel
+    HeaderPanel,
+    InfoBlockPanel,
+    RawStrengthTablePanel,
+    DynamicPlaceholderPanel,
+    ImagePanel,
+    QrCodePanel,
+    LocationDatePanel,
+    CustomTablePanel,
+    LineSpacerPanel,
+    VerticalSpacerPanel,
+    FooterPanel
 } from './SpecificPanels';
 
 const panelMapping = {
+    'header': HeaderPanel,
+    'client-info-block': InfoBlockPanel,
+    'trial-info-block': InfoBlockPanel,
+    'raw-strength-table': RawStrengthTablePanel,
+    'dynamic-placeholder': DynamicPlaceholderPanel,
+    'custom-image': ImagePanel,
+    'qr-code': QrCodePanel,
+    'location-date': LocationDatePanel, // BARU
+    'custom-table': CustomTablePanel, // DIPERBARUI
+    'horizontal-line': LineSpacerPanel,
+    'vertical-spacer': VerticalSpacerPanel,
+    'footer': FooterPanel,
+    // Komponen yang sudah ada sebelumnya
     'custom-text': TextPanel,
     'columns': ColumnsPanel,
     'jmd-table': JmdTablePanel,
     'material-properties-table': GenericTablePanel,
-    'raw-strength-table': GenericTablePanel,
     'strength-summary-table': GenericTablePanel,
     'strength-chart': GenericChartPanel,
     'sqc-chart': GenericChartPanel,
     'combined-gradation-chart': GenericChartPanel,
     'signature-block': SignaturePanel,
-    'custom-table': CustomTablePanel,
 };
 
 const ComponentPropertiesPanel = ({ component, onPropertyChange }) => {
