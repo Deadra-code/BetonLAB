@@ -71,11 +71,11 @@ export const AVAILABLE_COMPONENTS = [
             // PERUBAHAN: Tandai tabel JMD dan Material sebagai dapat diedit
             { id: 'jmd-table', name: 'Tabel Job Mix', icon: <Columns3 size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
             { id: 'material-properties-table', name: 'Tabel Properti Material', icon: <ListChecks size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
-            { id: 'raw-strength-table', name: 'Tabel Data Uji Tekan', icon: <Columns3 size={16}/>, type: 'data', rules: commonRules },
-            { id: 'strength-summary-table', name: 'Ringkasan Uji Tekan', icon: <TableProperties size={16}/>, type: 'data', rules: commonRules },
-            { id: 'strength-chart', name: 'Grafik Kuat Tekan', icon: <BarChart2 size={16}/>, type: 'data', rules: commonRules },
-            { id: 'sqc-chart', name: 'Grafik SQC', icon: <BarChart2 size={16}/>, type: 'data', rules: commonRules },
-            { id: 'combined-gradation-chart', name: 'Grafik Gradasi Gabungan', icon: <AreaChart size={16}/>, type: 'data', rules: commonRules },
+            { id: 'raw-strength-table', name: 'Tabel Data Uji Tekan', icon: <Columns3 size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
+            { id: 'strength-summary-table', name: 'Ringkasan Uji Tekan', icon: <TableProperties size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
+            { id: 'strength-chart', name: 'Grafik Kuat Tekan', icon: <BarChart2 size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
+            { id: 'sqc-chart', name: 'Grafik SQC', icon: <BarChart2 size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
+            { id: 'combined-gradation-chart', name: 'Grafik Gradasi Gabungan', icon: <AreaChart size={16}/>, type: 'data', isEditable: true, editContext: 'trial', rules: commonRules },
         ]
     },
     {

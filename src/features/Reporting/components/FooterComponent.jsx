@@ -24,9 +24,9 @@ const FooterComponent = ({ properties, pageNumber, totalPages }) => {
         color: color,
         display: 'flex',
         justifyContent: 'space-between',
-        paddingTop: '8px',
-        marginTop: 'auto', // Mendorong ke bawah
+        padding: '8px 0',
         borderTop: showBorder ? `1px solid ${color}` : 'none',
+        width: '100%',
     };
 
     return (

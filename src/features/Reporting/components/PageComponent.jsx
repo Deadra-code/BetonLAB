@@ -1,5 +1,5 @@
 // Lokasi file: src/features/Reporting/components/PageComponent.jsx
-// Deskripsi: Menerima props onUpdateProject/onUpdateTrial dan meneruskannya ke CanvasComponent.
+// Deskripsi: Menggunakan Flexbox untuk memastikan footer menempel di bagian bawah.
 
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
@@ -35,6 +35,8 @@ const PageComponent = ({
     const { size = 'a4', orientation = 'portrait' } = pageSettings || {};
     const dimensions = PAGE_DIMENSIONS[size];
     const draggingComponent = useReportBuilderStore(state => state.draggingComponent);
+    
+    const { header, components, footer } = page;
 
     const pageStyle = {
         width: orientation === 'portrait' ? `${dimensions.width}mm` : `${dimensions.height}mm`,
@@ -56,50 +58,68 @@ const PageComponent = ({
                     <Trash2 size={14} className="mr-1" /> Hapus Halaman
                 </Button>
             )}
-            <Droppable droppableId={`page-${pageIndex}`} isDropDisabled={isPageDropDisabled}>
-                {(provided, snapshot) => (
+            <Droppable droppableId={`page-${pageIndex}-wrapper`} type="PAGE_WRAPPER">
+                {(provided) => (
                     <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         style={pageStyle}
                         onClick={onDeselect}
-                        className={cn(
-                            "p-8 bg-white dark:bg-card shadow-lg mx-auto border",
-                            snapshot.isDraggingOver && !isPageDropDisabled && 'bg-primary/5',
-                            isPageDropDisabled && draggingComponent && "bg-red-100/50 border-red-300"
-                        )}
+                        className="p-8 bg-white dark:bg-card shadow-lg mx-auto border flex flex-col"
                     >
-                        {page.length === 0 && !snapshot.isDraggingOver && (
-                            <div className="w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center">
-                                <p className="text-muted-foreground">Area Halaman {pageIndex + 1}. Seret komponen ke sini.</p>
-                            </div>
+                        {/* Header */}
+                        {header && (
+                            <Draggable key={header.instanceId} draggableId={header.instanceId} index={0}>
+                                {(provided) => (
+                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                        <CanvasComponent {...{ component: header, isSelected: selectedComponentId, onClick: onComponentClick, reportData, settings, onPropertyChange, onDeleteComponent, apiReady, onUpdateProject, onUpdateTrial }} />
+                                    </div>
+                                )}
+                            </Draggable>
                         )}
-                        {page.map((component, index) => (
-                            <ErrorBoundary key={component.instanceId}>
-                                <Draggable key={component.instanceId} draggableId={component.instanceId} index={index}>
-                                    {(provided) => (
-                                        <div
-                                            ref={provided.innerRef}
-                                            {...provided.draggableProps}
-                                            {...provided.dragHandleProps}
-                                        >
-                                            <CanvasComponent
-                                                component={component}
-                                                isSelected={selectedComponentId}
-                                                onClick={onComponentClick}
-                                                reportData={reportData}
-                                                settings={settings}
-                                                onPropertyChange={onPropertyChange}
-                                                onDeleteComponent={onDeleteComponent}
-                                                apiReady={apiReady}
-                                                onUpdateProject={onUpdateProject}
-                                                onUpdateTrial={onUpdateTrial}
-                                            />
-                                        </div>
+
+                        {/* Main Content Area */}
+                        <Droppable droppableId={`page-${pageIndex}`} isDropDisabled={isPageDropDisabled}>
+                            {(provided, snapshot) => (
+                                <div
+                                    ref={provided.innerRef}
+                                    {...provided.droppableProps}
+                                    className={cn(
+                                        "flex-grow w-full h-full",
+                                        snapshot.isDraggingOver && !isPageDropDisabled && 'bg-primary/5',
+                                        isPageDropDisabled && draggingComponent && "bg-red-100/50 border-red-300",
+                                        components.length === 0 && !snapshot.isDraggingOver && "border-2 border-dashed rounded-lg flex items-center justify-center"
                                     )}
-                                </Draggable>
-                            </ErrorBoundary>
-                        ))}
+                                >
+                                    {components.length === 0 && !snapshot.isDraggingOver && (
+                                        <p className="text-muted-foreground">Area Halaman {pageIndex + 1}. Seret komponen ke sini.</p>
+                                    )}
+                                    {components.map((component, index) => (
+                                        <ErrorBoundary key={component.instanceId}>
+                                            <Draggable key={component.instanceId} draggableId={component.instanceId} index={index}>
+                                                {(provided) => (
+                                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                                        <CanvasComponent {...{ component, isSelected: selectedComponentId, onClick: onComponentClick, reportData, settings, onPropertyChange, onDeleteComponent, apiReady, onUpdateProject, onUpdateTrial }}/>
+                                                    </div>
+                                                )}
+                                            </Draggable>
+                                        </ErrorBoundary>
+                                    ))}
+                                    {provided.placeholder}
+                                </div>
+                            )}
+                        </Droppable>
+
+                        {/* Footer */}
+                        {footer && (
+                            <Draggable key={footer.instanceId} draggableId={footer.instanceId} index={1}>
+                                {(provided) => (
+                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                        <CanvasComponent {...{ component: footer, isSelected: selectedComponentId, onClick: onComponentClick, reportData, settings, onPropertyChange, onDeleteComponent, apiReady, onUpdateProject, onUpdateTrial }} />
+                                    </div>
+                                )}
+                            </Draggable>
+                        )}
                         {provided.placeholder}
                     </div>
                 )}

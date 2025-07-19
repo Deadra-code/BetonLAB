@@ -37,6 +37,7 @@ export default function ReportBuilderV2({ reportData, settings, onLayoutChange, 
         if (!id) return null;
         let found = null;
         const findRecursive = (nodes) => {
+            if (!nodes || !Array.isArray(nodes)) return;
             for (const component of nodes) {
                 if (component.instanceId === id) { found = component; return; }
                 if (component.children && Array.isArray(component.children)) {
@@ -49,7 +50,14 @@ export default function ReportBuilderV2({ reportData, settings, onLayoutChange, 
                 }
             }
         };
-        for (const page of layout) { findRecursive(page); if(found) break; }
+
+        for (const page of layout) {
+            if (page.header && page.header.instanceId === id) return page.header;
+            if (page.footer && page.footer.instanceId === id) return page.footer;
+            
+            findRecursive(page.components);
+            if(found) break;
+        }
         return found;
     };
     

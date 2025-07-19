@@ -1,5 +1,5 @@
 // src/hooks/useReportBuilderStore.js
-// DESKRIPSI: PERBAIKAN FINAL - Menambahkan properti 'rules' pada containerDef untuk 'page' untuk menyelesaikan bug drag-and-drop.
+// DESKRIPSI: Refactor state management untuk memisahkan header/footer dari komponen utama.
 
 import { create } from 'zustand';
 import { produce } from 'immer';
@@ -21,17 +21,27 @@ const setNestedValue = (obj, path, value) => {
     current[keys[keys.length - 1]] = value;
 };
 
+const createNewPage = () => ({
+    header: null,
+    components: [],
+    footer: null,
+});
+
 
 const storeLogic = (set, get) => ({
     // === STATE ===
-    layout: [[]],
+    layout: [createNewPage()],
     pageSettings: { size: 'a4', orientation: 'portrait' },
     selectedComponentId: null,
     draggingComponent: null,
 
     // === ACTIONS ===
     initializeLayout: (initialData) => {
-        const layout = initialData?.layout || [[]];
+        let layout = initialData?.layout;
+        if (!layout || !Array.isArray(layout) || layout.length === 0 || !layout[0].hasOwnProperty('components')) {
+             layout = [createNewPage()];
+        }
+
         const pageSettings = initialData?.pageSettings || { size: 'a4', orientation: 'portrait' };
         
         const temporalState = get().temporal;
@@ -48,12 +58,12 @@ const storeLogic = (set, get) => ({
 
     setSelectedComponentId: (id) => set({ selectedComponentId: id }),
     updatePageSettings: (key, value) => set(produce(draft => { draft.pageSettings[key] = value; })),
-    addPage: () => set(produce(draft => { draft.layout.push([]); })),
+    addPage: () => set(produce(draft => { draft.layout.push(createNewPage()); })),
     deletePage: (pageIndex) => set(produce(draft => {
         if (draft.layout.length > 1) {
             draft.layout.splice(pageIndex, 1);
         } else {
-            draft.layout[0] = [];
+            draft.layout[0] = createNewPage();
         }
     })),
 
@@ -62,6 +72,7 @@ const storeLogic = (set, get) => ({
         const findAndUpdate = (nodes) => {
             for (let i = 0; i < nodes.length; i++) {
                 const component = nodes[i];
+                if (!component) continue;
                 if (component.instanceId === instanceId) {
                     componentToUpdate = component;
                     setNestedValue(component, propPath, value);
@@ -77,7 +88,18 @@ const storeLogic = (set, get) => ({
             }
             return false;
         };
-        for (const page of draft.layout) { if (findAndUpdate(page)) break; }
+
+        for (const page of draft.layout) {
+            if (page.header && page.header.instanceId === instanceId) {
+                setNestedValue(page.header, propPath, value);
+                return;
+            }
+             if (page.footer && page.footer.instanceId === instanceId) {
+                setNestedValue(page.footer, propPath, value);
+                return;
+            }
+            if (findAndUpdate(page.components)) return;
+        }
 
         if (componentToUpdate && componentToUpdate.id === 'columns' && propPath === 'properties.columnCount') {
             const newCount = parseInt(value) || 1;
@@ -114,7 +136,11 @@ const storeLogic = (set, get) => ({
             }
             return false;
         };
-        for (const page of draft.layout) { if (removeById(page)) break; }
+        for (const page of draft.layout) {
+            if (page.header && page.header.instanceId === instanceIdToDelete) page.header = null;
+            if (page.footer && page.footer.instanceId === instanceIdToDelete) page.footer = null;
+            if (removeById(page.components)) break;
+        }
         if (draft.selectedComponentId === instanceIdToDelete) { draft.selectedComponentId = null; }
     })),
     
@@ -133,19 +159,27 @@ const storeLogic = (set, get) => ({
         if (!destination || !draggingComponent) return;
 
         set(produce(draft => {
-            const findContainerInfo = (droppableId) => {
-                if (droppableId.startsWith('page-')) {
+            const findContainerInfo = (droppableId, pageIndexHint = -1) => {
+                 if (droppableId.startsWith('page-')) {
                     const pageIndex = parseInt(droppableId.split('-')[1]);
-                    // PERBAIKAN: Tambahkan properti `rules` ke definisi kontainer halaman.
                     const pageDef = { id: 'page', name: 'Halaman', rules: { invalidChildren: [] } };
-                    return { containerArray: draft.layout[pageIndex], containerDef: pageDef, pageIndex };
+                    return { containerArray: draft.layout[pageIndex].components, containerDef: pageDef, pageIndex };
                 }
                 
-                for (let pageIndex = 0; pageIndex < draft.layout.length; pageIndex++) {
-                    const page = draft.layout[pageIndex];
+                const searchScope = pageIndexHint !== -1 ? [draft.layout[pageIndexHint]] : draft.layout;
+                const pageOffset = pageIndexHint !== -1 ? pageIndexHint : 0;
+
+                for (let i = 0; i < searchScope.length; i++) {
+                    const pageIndex = i + pageOffset;
+                    const page = searchScope[i];
                     let found = null;
+
+                    if (page.header?.instanceId === droppableId) return { containerArray: [page.header], containerDef: {id: 'header-container'}, pageIndex};
+                    if (page.footer?.instanceId === droppableId) return { containerArray: [page.footer], containerDef: {id: 'footer-container'}, pageIndex};
+
                     const findRecursive = (nodes) => {
                         for (const node of nodes) {
+                            if (!node) continue;
                             if (node.instanceId === droppableId) { found = { containerArray: node.children, containerDef: node, pageIndex }; return; }
                             if (node.id === 'trial-loop' && `loop-${node.instanceId}` === droppableId) { found = { containerArray: node.children, containerDef: node, pageIndex }; return; }
                             if (node.id === 'columns' && droppableId.startsWith(node.instanceId)) {
@@ -161,7 +195,7 @@ const storeLogic = (set, get) => ({
                             }
                         }
                     };
-                    findRecursive(page);
+                    findRecursive(page.components);
                     if (found) return found;
                 }
                 return { containerArray: null, containerDef: null, pageIndex: -1 };
@@ -169,35 +203,44 @@ const storeLogic = (set, get) => ({
 
             const { containerArray: destContainer, containerDef: destContainerDef, pageIndex: destPageIndex } = findContainerInfo(destination.droppableId);
 
-            if (!destContainer) return;
+            if (!destContainerDef) return;
 
-            const destType = destContainerDef.id === 'columns' ? 'columns' : destContainerDef.id;
+            const destType = destContainerDef.id;
 
-            if (!draggingComponent.rules.validParents.includes(destType)) {
-                toast.error(`Komponen "${draggingComponent.name}" tidak dapat diletakkan di dalam "${destContainerDef.name}".`);
-                return;
-            }
-
-            if (destContainerDef.rules?.invalidChildren.includes(draggingComponent.id)) {
-                toast.error(`"${destContainerDef.name}" tidak dapat berisi komponen "${draggingComponent.name}".`);
-                return;
+            if (draggingComponent.id === 'header' || draggingComponent.id === 'footer') {
+                if(destType !== 'page') {
+                    toast.error(`Header/Footer hanya bisa diletakkan di halaman.`);
+                    return;
+                }
+            } else {
+                 if (!draggingComponent.rules.validParents.includes(destType)) {
+                    toast.error(`Komponen "${draggingComponent.name}" tidak dapat diletakkan di dalam "${destContainerDef.name}".`);
+                    return;
+                }
+                if (destContainerDef.rules?.invalidChildren.includes(draggingComponent.id)) {
+                    toast.error(`"${destContainerDef.name}" tidak dapat berisi komponen "${draggingComponent.name}".`);
+                    return;
+                }
+                 if (draggingComponent.rules.isTopLevelOnly && destType !== 'page') {
+                    toast.error(`Komponen "${draggingComponent.name}" hanya dapat diletakkan langsung di halaman.`);
+                    return;
+                }
             }
             
-            if (draggingComponent.rules.isTopLevelOnly && destType !== 'page') {
-                toast.error(`Komponen "${draggingComponent.name}" hanya dapat diletakkan langsung di halaman.`);
-                return;
-            }
-
             if (draggingComponent.rules.maxInstancesPerPage) {
                 const page = draft.layout[destPageIndex];
-                const count = page.filter(c => c.id === draggingComponent.id).length;
+                const count = page.components.filter(c => c.id === draggingComponent.id).length;
+                if (page.header?.id === draggingComponent.id) count++;
+                if (page.footer?.id === draggingComponent.id) count++;
+                
                 if (count >= draggingComponent.rules.maxInstancesPerPage) {
-                    toast.error(`Hanya boleh ada ${draggingComponent.rules.maxInstancesPerPage} komponen "${draggingComponent.name}" per halaman.`);
+                    toast.error(`Hanya boleh ada ${draggingComponent.rules.maxInstancesPerPage} instance "${draggingComponent.name}" per halaman.`);
                     return;
                 }
             }
 
             let movedItem;
+            // --- Hapus dari sumber ---
             if (source.droppableId.startsWith('library-group')) {
                 const componentToClone = draggingComponent;
                 movedItem = { 
@@ -207,14 +250,37 @@ const storeLogic = (set, get) => ({
                     properties: componentToClone.properties ? JSON.parse(JSON.stringify(componentToClone.properties)) : {} 
                 };
             } else {
-                const { containerArray: sourceContainer } = findContainerInfo(source.droppableId);
+                 const { containerArray: sourceContainer, pageIndex: sourcePageIndex } = findContainerInfo(source.droppableId);
                 if (sourceContainer) {
-                    [movedItem] = sourceContainer.splice(source.index, 1);
+                    const sourcePage = draft.layout[sourcePageIndex];
+                    if(sourcePage.header?.instanceId === source.draggableId) {
+                        movedItem = sourcePage.header;
+                        sourcePage.header = null;
+                    } else if (sourcePage.footer?.instanceId === source.draggableId) {
+                        movedItem = sourcePage.footer;
+                        sourcePage.footer = null;
+                    } else {
+                        [movedItem] = sourceContainer.splice(source.index, 1);
+                    }
                 }
             }
 
+            // --- Tambahkan ke tujuan ---
             if (movedItem) {
-                destContainer.splice(destination.index, 0, movedItem);
+                const destPage = draft.layout[destPageIndex];
+                if (movedItem.id === 'header') {
+                    if (destPage.header) { // Jika sudah ada, pindahkan yang lama ke komponen
+                        destPage.components.unshift(destPage.header);
+                    }
+                    destPage.header = movedItem;
+                } else if (movedItem.id === 'footer') {
+                     if (destPage.footer) { // Jika sudah ada, pindahkan yang lama ke komponen
+                        destPage.components.push(destPage.footer);
+                    }
+                    destPage.footer = movedItem;
+                } else {
+                    destContainer.splice(destination.index, 0, movedItem);
+                }
             }
         }));
     },
