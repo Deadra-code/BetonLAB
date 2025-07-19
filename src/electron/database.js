@@ -214,7 +214,7 @@ async function runMigrations(currentVersion) {
                 if (currentVersion < 19) {
                     log.info('Migration to v19: Seeding default JMD report template...');
                     await new Promise((res, rej) => {
-                        const templateName = "Laporan JMD Beton (Bawaan)";
+                        const templateName = "Laporan JMD Beton";
                         db.get("SELECT COUNT(*) as count FROM report_layouts WHERE name = ?", [templateName], (err, row) => {
                             if (err) return rej(err);
                             if (row.count === 0) {

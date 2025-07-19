@@ -59,6 +59,11 @@ export default function ReportBuilderPage({ context, apiReady }) {
     const { updateTrial } = useTrials(activeTrialId);
 
     useEffect(() => {
+        // TAHAP 2: Pilih proyek pertama secara otomatis jika belum ada yang dipilih
+        if (!selectedProject && projects.length > 0) {
+            setSelectedProject(projects[0]);
+        }
+
         const fetchPreviewData = async () => {
             if (selectedProject?.id) {
                 setIsLoadingData(true);
@@ -76,7 +81,7 @@ export default function ReportBuilderPage({ context, apiReady }) {
             }
         };
         fetchPreviewData();
-    }, [selectedProject, apiReady, notify]);
+    }, [selectedProject, projects, apiReady, notify]);
     
     const initialLayout = useMemo(() => {
         return activeTemplate ? JSON.parse(activeTemplate.layout_object_json || '{}') : undefined;
