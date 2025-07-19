@@ -22,24 +22,16 @@ const setNestedValue = (obj, path, value) => {
 };
 
 
-const createNewPage = () => ({
-    id: `page-${Date.now()}`,
-    components: [],
-    header: null,
-    footer: null,
-});
-
-
 const storeLogic = (set, get) => ({
     // === STATE ===
-    layout: [createNewPage()],
+    layout: [[]],
     pageSettings: { size: 'a4', orientation: 'portrait' },
     selectedComponentId: null,
     draggingComponent: null,
 
     // === ACTIONS ===
     initializeLayout: (initialData) => {
-        const layout = initialData?.layout && initialData.layout.length > 0 ? initialData.layout : [createNewPage()];
+        const layout = initialData?.layout || [[]];
         const pageSettings = initialData?.pageSettings || { size: 'a4', orientation: 'portrait' };
         
         const temporalState = get().temporal;
@@ -56,12 +48,12 @@ const storeLogic = (set, get) => ({
 
     setSelectedComponentId: (id) => set({ selectedComponentId: id }),
     updatePageSettings: (key, value) => set(produce(draft => { draft.pageSettings[key] = value; })),
-    addPage: () => set(produce(draft => { draft.layout.push(createNewPage()); })),
+    addPage: () => set(produce(draft => { draft.layout.push([]); })),
     deletePage: (pageIndex) => set(produce(draft => {
         if (draft.layout.length > 1) {
             draft.layout.splice(pageIndex, 1);
         } else {
-            toast.error("Tidak dapat menghapus halaman terakhir.");
+            draft.layout[0] = [];
         }
     })),
 
@@ -85,18 +77,7 @@ const storeLogic = (set, get) => ({
             }
             return false;
         };
-
-        for (const page of draft.layout) {
-            if (page.header?.instanceId === instanceId) {
-                setNestedValue(page.header, propPath, value);
-                return;
-            }
-            if (page.footer?.instanceId === instanceId) {
-                setNestedValue(page.footer, propPath, value);
-                return;
-            }
-            if (findAndUpdate(page.components)) break;
-        }
+        for (const page of draft.layout) { if (findAndUpdate(page)) break; }
 
         if (componentToUpdate && componentToUpdate.id === 'columns' && propPath === 'properties.columnCount') {
             const newCount = parseInt(value) || 1;
@@ -117,45 +98,24 @@ const storeLogic = (set, get) => ({
     })),
     
     deleteComponent: (instanceIdToDelete) => set(produce(draft => {
-        let foundAndRemoved = false;
-        for (const page of draft.layout) {
-            if (page.header?.instanceId === instanceIdToDelete) {
-                page.header = null;
-                foundAndRemoved = true;
-                break;
-            }
-            if (page.footer?.instanceId === instanceIdToDelete) {
-                page.footer = null;
-                foundAndRemoved = true;
-                break;
-            }
-            
-            const removeById = (nodes) => {
-                for (let i = 0; i < nodes.length; i++) {
-                    if (nodes[i].instanceId === instanceIdToDelete) {
-                        nodes.splice(i, 1);
-                        return true;
-                    }
-                    if (nodes[i].children && Array.isArray(nodes[i].children)) {
-                        if (nodes[i].id === 'columns') {
-                            for (const col of nodes[i].children) { if (removeById(col)) return true; }
-                        } else {
-                            if (removeById(nodes[i].children)) return true;
-                        }
+        const removeById = (nodes) => {
+            for (let i = 0; i < nodes.length; i++) {
+                if (nodes[i].instanceId === instanceIdToDelete) {
+                    nodes.splice(i, 1);
+                    return true;
+                }
+                if (nodes[i].children && Array.isArray(nodes[i].children)) {
+                    if (nodes[i].id === 'columns') {
+                        for (const col of nodes[i].children) { if (removeById(col)) return true; }
+                    } else {
+                        if (removeById(nodes[i].children)) return true;
                     }
                 }
-                return false;
-            };
-
-            if (removeById(page.components)) {
-                foundAndRemoved = true;
-                break;
             }
-        }
-
-        if (foundAndRemoved && draft.selectedComponentId === instanceIdToDelete) {
-            draft.selectedComponentId = null;
-        }
+            return false;
+        };
+        for (const page of draft.layout) { if (removeById(page)) break; }
+        if (draft.selectedComponentId === instanceIdToDelete) { draft.selectedComponentId = null; }
     })),
     
     onDragStart: (start) => {
@@ -171,97 +131,91 @@ const storeLogic = (set, get) => ({
         set({ draggingComponent: null });
 
         if (!destination || !draggingComponent) return;
-        
-        const destPageIndex = get().layout.findIndex(p => p.id === destination.droppableId);
-        
-        if (destPageIndex === -1) {
-            console.error("Could not find destination page for droppableId:", destination.droppableId);
-            return;
-        }
 
         set(produce(draft => {
-            const destPage = draft.layout[destPageIndex];
-
-            // Aturan validasi
-            if (draggingComponent.rules.isTopLevelOnly && !destination.droppableId.startsWith('page-')) {
-                 toast.error(`Komponen "${draggingComponent.name}" hanya bisa diletakkan di halaman.`);
-                 return;
-            }
-            
-            const newComponent = { 
-                ...draggingComponent, 
-                instanceId: `${draggingComponent.id}-${Date.now()}`,
-                children: draggingComponent.children ? JSON.parse(JSON.stringify(draggingComponent.children)) : undefined, 
-                properties: draggingComponent.properties ? JSON.parse(JSON.stringify(draggingComponent.properties)) : {} 
-            };
-            
-            // Logika penempatan untuk Header dan Footer
-            if (newComponent.id === 'header') {
-                if (destPage.header) {
-                    toast.error('Halaman sudah memiliki Kop Surat.');
-                    return;
+            const findContainerInfo = (droppableId) => {
+                if (droppableId.startsWith('page-')) {
+                    const pageIndex = parseInt(droppableId.split('-')[1]);
+                    // PERBAIKAN: Tambahkan properti `rules` ke definisi kontainer halaman.
+                    const pageDef = { id: 'page', name: 'Halaman', rules: { invalidChildren: [] } };
+                    return { containerArray: draft.layout[pageIndex], containerDef: pageDef, pageIndex };
                 }
-                destPage.header = newComponent;
-                return; // Selesai
-            }
-            
-            if (newComponent.id === 'footer') {
-                if (destPage.footer) {
-                    toast.error('Halaman sudah memiliki Footer.');
-                    return;
-                }
-                destPage.footer = newComponent;
-                return; // Selesai
-            }
-            
-            // Logika untuk komponen lain (jika sumbernya dari library)
-             if (source.droppableId.startsWith('library-group')) {
-                destPage.components.splice(destination.index, 0, newComponent);
-             } else {
-                // Logika untuk memindahkan komponen yang sudah ada
-                let sourceComponent = null;
-                let sourceContainer = null;
                 
-                const findSourceRecursive = (page) => {
-                    if(page.header?.instanceId === result.draggableId) {
-                        sourceComponent = page.header;
-                        sourceContainer = page;
-                        return;
-                    }
-                     if(page.footer?.instanceId === result.draggableId) {
-                        sourceComponent = page.footer;
-                        sourceContainer = page;
-                        return;
-                    }
-                    // Implementasi pencarian di page.components jika diperlukan
+                for (let pageIndex = 0; pageIndex < draft.layout.length; pageIndex++) {
+                    const page = draft.layout[pageIndex];
+                    let found = null;
+                    const findRecursive = (nodes) => {
+                        for (const node of nodes) {
+                            if (node.instanceId === droppableId) { found = { containerArray: node.children, containerDef: node, pageIndex }; return; }
+                            if (node.id === 'trial-loop' && `loop-${node.instanceId}` === droppableId) { found = { containerArray: node.children, containerDef: node, pageIndex }; return; }
+                            if (node.id === 'columns' && droppableId.startsWith(node.instanceId)) {
+                                const colIndex = parseInt(droppableId.split('-col-')[1]);
+                                if (node.children[colIndex]) { found = { containerArray: node.children[colIndex], containerDef: node, pageIndex }; return; }
+                            }
+                            if (Array.isArray(node.children)) {
+                                if (node.id === 'columns') {
+                                    for (const col of node.children) { findRecursive(col); if (found) return; }
+                                } else {
+                                    findRecursive(node.children); if (found) return;
+                                }
+                            }
+                        }
+                    };
+                    findRecursive(page);
+                    if (found) return found;
                 }
+                return { containerArray: null, containerDef: null, pageIndex: -1 };
+            };
 
-                // Untuk sekarang, kita hanya handle drag dari library,
-                // memindahkan komponen yang ada lebih kompleks dan di luar cakupan perbaikan ini.
-                toast.info("Memindahkan komponen yang sudah ada belum didukung.");
+            const { containerArray: destContainer, containerDef: destContainerDef, pageIndex: destPageIndex } = findContainerInfo(destination.droppableId);
+
+            if (!destContainer) return;
+
+            const destType = destContainerDef.id === 'columns' ? 'columns' : destContainerDef.id;
+
+            if (!draggingComponent.rules.validParents.includes(destType)) {
+                toast.error(`Komponen "${draggingComponent.name}" tidak dapat diletakkan di dalam "${destContainerDef.name}".`);
                 return;
-             }
-        }));
-    },
+            }
 
-    handleOverflow: (pageIndex) => {
-        set(produce(draft => {
-            const currentPage = draft.layout[pageIndex];
-            if (!currentPage || currentPage.components.length === 0) return;
-
-            // Ambil komponen terakhir yang menyebabkan overflow
-            const componentToMove = currentPage.components.pop();
-
-            // Cek apakah halaman berikutnya ada, jika tidak, buat halaman baru
-            let nextPage = draft.layout[pageIndex + 1];
-            if (!nextPage) {
-                const newPage = createNewPage();
-                draft.layout.push(newPage);
-                nextPage = newPage;
+            if (destContainerDef.rules?.invalidChildren.includes(draggingComponent.id)) {
+                toast.error(`"${destContainerDef.name}" tidak dapat berisi komponen "${draggingComponent.name}".`);
+                return;
             }
             
-            // Pindahkan komponen ke awal halaman berikutnya
-            nextPage.components.unshift(componentToMove);
+            if (draggingComponent.rules.isTopLevelOnly && destType !== 'page') {
+                toast.error(`Komponen "${draggingComponent.name}" hanya dapat diletakkan langsung di halaman.`);
+                return;
+            }
+
+            if (draggingComponent.rules.maxInstancesPerPage) {
+                const page = draft.layout[destPageIndex];
+                const count = page.filter(c => c.id === draggingComponent.id).length;
+                if (count >= draggingComponent.rules.maxInstancesPerPage) {
+                    toast.error(`Hanya boleh ada ${draggingComponent.rules.maxInstancesPerPage} komponen "${draggingComponent.name}" per halaman.`);
+                    return;
+                }
+            }
+
+            let movedItem;
+            if (source.droppableId.startsWith('library-group')) {
+                const componentToClone = draggingComponent;
+                movedItem = { 
+                    ...componentToClone, 
+                    instanceId: `${componentToClone.id}-${Date.now()}`, 
+                    children: componentToClone.children ? JSON.parse(JSON.stringify(componentToClone.children)) : undefined, 
+                    properties: componentToClone.properties ? JSON.parse(JSON.stringify(componentToClone.properties)) : {} 
+                };
+            } else {
+                const { containerArray: sourceContainer } = findContainerInfo(source.droppableId);
+                if (sourceContainer) {
+                    [movedItem] = sourceContainer.splice(source.index, 1);
+                }
+            }
+
+            if (movedItem) {
+                destContainer.splice(destination.index, 0, movedItem);
+            }
         }));
     },
 });
