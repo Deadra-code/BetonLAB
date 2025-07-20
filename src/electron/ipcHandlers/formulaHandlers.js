@@ -103,6 +103,18 @@ function registerFormulaHandlers(ipcMain, db) {
             );
         });
     });
+
+    // Handler baru untuk mengambil satu formula default
+    ipcMain.handle('formulas:get-default-formula', async (event, formulaKey) => {
+        if (!formulaKey) {
+            throw new Error('Kunci formula harus disediakan.');
+        }
+        const formula = defaultFormulas.find(f => f.formula_key === formulaKey);
+        if (!formula) {
+            throw new Error(`Formula default dengan kunci '${formulaKey}' tidak ditemukan.`);
+        }
+        return formula;
+    });
 }
 
 module.exports = { registerFormulaHandlers };

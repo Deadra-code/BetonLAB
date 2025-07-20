@@ -81,3 +81,6 @@ export const getFormulas = () => isApiReady() ? window.api.getFormulas() : Promi
 export const updateFormula = (formulaData) => isApiReady() ? window.api.updateFormula(formulaData) : Promise.reject(new Error("API not ready"));
 // PENINGKATAN: Fungsi baru untuk mereset formula
 export const resetFormulaToDefault = (formulaKey) => isApiReady() ? window.api.resetFormulaToDefault(formulaKey) : Promise.reject(new Error("API not ready"));
+
+// Fungsi untuk mengambil satu formula default
+export const getDefaultFormula = (formulaKey) => isApiReady() ? window.api.getDefaultFormula(formulaKey) : Promise.reject(new Error("API not ready"));

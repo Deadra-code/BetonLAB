@@ -12,7 +12,7 @@ import { ScrollArea } from '../../../components/ui/scroll-area';
 import { Pencil, RotateCcw } from 'lucide-react';
 import { useNotifier } from '../../../hooks/useNotifier';
 // PERBAIKAN: Menggunakan default import
-import defaultFormulas from '../../../electron/defaultFormulas';
+import * as api from '../../../api/electronAPI';
 
 export const WcRatioSettings = ({ formula, onFormulaChange }) => {
     // ... (sisa kode komponen tetap sama) ...
@@ -46,11 +46,15 @@ export const WcRatioSettings = ({ formula, onFormulaChange }) => {
         setIsDialogOpen(false);
     };
 
-    const handleResetToDefault = () => {
-        const defaultFormula = defaultFormulas.find(f => f.formula_key === 'wc_ratio_table');
-        if (defaultFormula) {
-            onFormulaChange(formula.formula_key, defaultFormula.formula_value);
-            notify.success("Nilai Tabel FAS telah dikembalikan ke rekomendasi SNI.");
+    const handleResetToDefault = async () => {
+        try {
+            const defaultFormula = await api.getDefaultFormula('wc_ratio_table');
+            if (defaultFormula) {
+                onFormulaChange(formula.formula_key, defaultFormula.formula_value);
+                notify.success("Nilai Tabel FAS telah dikembalikan ke rekomendasi SNI.");
+            }
+        } catch (error) {
+            notify.error(`Gagal mengambil formula default: ${error.message}`);
         }
     };
 

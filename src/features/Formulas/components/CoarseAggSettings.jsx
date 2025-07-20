@@ -9,8 +9,7 @@ import { Label } from '../../../components/ui/label';
 import { ChevronRight, RotateCcw } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useNotifier } from '../../../hooks/useNotifier';
-// PERBAIKAN: Menggunakan default import
-import defaultFormulas from '../../../electron/defaultFormulas';
+import * as api from '../../../api/electronAPI';
 
 export const CoarseAggSettings = ({ formula, onFormulaChange }) => {
     // ... (sisa kode komponen tetap sama) ...
@@ -30,11 +29,15 @@ export const CoarseAggSettings = ({ formula, onFormulaChange }) => {
         onFormulaChange(formula.formula_key, JSON.stringify(newData, null, 2));
     };
 
-    const handleResetToDefault = () => {
-        const defaultFormula = defaultFormulas.find(f => f.formula_key === 'coarse_agg_vol_table');
-        if (defaultFormula) {
-            onFormulaChange(formula.formula_key, defaultFormula.formula_value);
-            notify.success("Tabel Volume Agregat Kasar telah dikembalikan ke rekomendasi SNI.");
+    const handleResetToDefault = async () => {
+        try {
+            const defaultFormula = await api.getDefaultFormula('coarse_agg_vol_table');
+            if (defaultFormula) {
+                onFormulaChange(formula.formula_key, defaultFormula.formula_value);
+                notify.success("Tabel Volume Agregat Kasar telah dikembalikan ke rekomendasi SNI.");
+            }
+        } catch (error) {
+            notify.error(`Gagal mengambil formula default: ${error.message}`);
         }
     };
 

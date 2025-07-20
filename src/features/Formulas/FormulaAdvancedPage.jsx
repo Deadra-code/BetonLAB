@@ -228,21 +228,21 @@ export default function FormulaAdvancedPage({ apiReady }) {
                 <TabsTrigger value="tables">Tabel Data Perhitungan</TabsTrigger>
                 <TabsTrigger value="readonly">Rumus Turunan (Read-Only)</TabsTrigger>
             </TabsList>
-            <TabsContent value="expressions" className="flex-grow overflow-y-auto p-1">
+            <TabsContent value="expressions" className="overflow-y-auto p-1">
                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {expressionFormulas.map(formula => (
                         <FormulaCard key={formula.id} formula={formula} onSave={handleSaveFormula} onReset={handleResetFormula} isSaving={isSaving === formula.id} onDirtyChange={(isDirty) => handleDirtyChange(formula.id, isDirty)} />
                     ))}
                 </div>
             </TabsContent>
-            <TabsContent value="tables" className="flex-grow overflow-y-auto p-1">
+            <TabsContent value="tables" className="overflow-y-auto p-1">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {tableFormulas.map(formula => (
                         <FormulaCard key={formula.id} formula={formula} onSave={handleSaveFormula} onReset={handleResetFormula} isSaving={isSaving === formula.id} onDirtyChange={(isDirty) => handleDirtyChange(formula.id, isDirty)} />
                     ))}
                 </div>
             </TabsContent>
-            <TabsContent value="readonly" className="flex-grow overflow-y-auto p-1">
+            <TabsContent value="readonly" className="overflow-y-auto p-1">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {readOnlyFormulas.map(formula => (
                         <FormulaCard key={formula.id} formula={formula} onSave={() => {}} onReset={() => {}} isSaving={false} onDirtyChange={() => {}} />
