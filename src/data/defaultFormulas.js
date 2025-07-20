@@ -109,4 +109,4 @@ const defaultFormulas = [
     }
 ];
 
-module.exports = defaultFormulas;
+export default defaultFormulas;

@@ -18,7 +18,7 @@ const hashPassword = (password) => {
 };
 
 // PERBAIKAN: Mengimpor dari lokasi baru di /data dan mengakses properti .default
-const defaultFormulas = require('../data/defaultFormulas.js').default;
+const defaultFormulas = require('./defaultFormulas.js');
 const JMD_TEMPLATE_JSON = require('./jmdTemplate.js');
 
 

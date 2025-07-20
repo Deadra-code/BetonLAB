@@ -3,7 +3,7 @@
 
 const log = require('electron-log');
 // PERBAIKAN: Mengimpor dari lokasi baru di /data dan mengakses properti .default
-const defaultFormulas = require('../../data/defaultFormulas.js').default;
+const defaultFormulas = require('../defaultFormulas.js');
 
 function registerFormulaHandlers(ipcMain, db) {
     // Mengambil semua formula
