@@ -1,5 +1,5 @@
 // public/preload.js
-// Deskripsi: Mengekspos API formula ke frontend, termasuk endpoint baru untuk reset.
+// Deskripsi: Mengekspos API formula ke frontend, termasuk endpoint baru untuk reset dan riwayat.
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -93,8 +93,10 @@ contextBridge.exposeInMainWorld('api', {
     // === API BARU UNTUK FORMULA ===
     getFormulas: () => ipcRenderer.invoke('formulas:get-all'),
     updateFormula: (formulaData) => ipcRenderer.invoke('formulas:update', formulaData),
-    // PENINGKATAN: Endpoint baru untuk mereset formula
-    resetFormulaToDefault: (formulaKey) => ipcRenderer.invoke('formulas:reset-default', formulaKey),
+    resetFormulaToDefault: (data) => ipcRenderer.invoke('formulas:reset-default', data),
+    getDefaultFormula: (formulaKey) => ipcRenderer.invoke('formulas:get-default-formula', formulaKey),
+    // TAHAP 1: Endpoint baru untuk riwayat
+    getFormulaHistory: (formulaId) => ipcRenderer.invoke('formulas:get-history', formulaId),
 });
 
 window.dispatchEvent(new Event('api-ready'));

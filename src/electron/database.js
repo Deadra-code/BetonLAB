@@ -1,5 +1,5 @@
 // Lokasi file: src/electron/database.js
-// Deskripsi: Menambahkan migrasi v21 untuk membuat tabel `formula_history`.
+// Deskripsi: Memperbarui path impor untuk defaultFormulas agar konsisten dengan frontend.
 
 const { app } = require('electron');
 const path = require('path');
@@ -17,8 +17,8 @@ const hashPassword = (password) => {
     return `${salt}:${hash}`;
 };
 
-// Mengimpor array secara langsung
-const defaultFormulas = require('./defaultFormulas');
+// PERBAIKAN: Mengimpor dari lokasi baru di /data dan mengakses properti .default
+const defaultFormulas = require('../data/defaultFormulas.js').default;
 const JMD_TEMPLATE_JSON = require('./jmdTemplate.js');
 
 
