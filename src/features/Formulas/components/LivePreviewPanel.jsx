@@ -8,7 +8,7 @@ import { Label } from '../../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import ResultCard from '../../../components/ResultCard';
 import { calculateMixDesign } from '../../../utils/concreteCalculator';
-import { defaultInputs, defaultSieveData } from '../../../data/sniData';
+import { defaultInputs } from '../../../data/sniData';
 import { AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -33,8 +33,8 @@ export const LivePreviewPanel = ({ formulas }) => {
         const sieveSizes = [100, 50, 40, 25, 20, 12.5, 10, 4.75, 2.36, 1.18, 0.60, 0.30, 0.15];
 
         return sieveSizes.map(size => {
-            const finePassing = defaultSieveData.fine[size] || 100;
-            const coarsePassing = defaultSieveData.coarse[size] || 100;
+            const finePassing = defaultInputs.sieve.fine[size] || 100;
+            const coarsePassing = defaultInputs.sieve.coarse[size] || 100;
             const combined = (finePassing * fineRatio) + (coarsePassing * coarseRatio);
             const boundary = sniBoundaries[size] || [null, null];
             return {
