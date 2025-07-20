@@ -1,5 +1,5 @@
 // src/api/electronAPI.js
-// Deskripsi: Menambahkan fungsi pembungkus untuk API formula.
+// Deskripsi: Menambahkan fungsi pembungkus untuk API reset formula.
 
 const isApiReady = () => {
     if (window.api) return true;
@@ -79,3 +79,5 @@ export const deleteReportLayout = (id) => isApiReady() ? window.api.deleteReport
 // === FUNGSI BARU UNTUK FORMULA ===
 export const getFormulas = () => isApiReady() ? window.api.getFormulas() : Promise.resolve([]);
 export const updateFormula = (formulaData) => isApiReady() ? window.api.updateFormula(formulaData) : Promise.reject(new Error("API not ready"));
+// PENINGKATAN: Fungsi baru untuk mereset formula
+export const resetFormulaToDefault = (formulaKey) => isApiReady() ? window.api.resetFormulaToDefault(formulaKey) : Promise.reject(new Error("API not ready"));

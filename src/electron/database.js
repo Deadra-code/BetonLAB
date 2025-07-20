@@ -1,5 +1,5 @@
 // Lokasi file: src/electron/database.js
-// Deskripsi: Menambahkan migrasi v20 untuk membuat dan mengisi tabel `calculation_formulas`.
+// Deskripsi: Menambahkan migrasi v21 untuk membuat tabel `formula_history`.
 
 const { app } = require('electron');
 const path = require('path');
@@ -8,8 +8,7 @@ const log = require('electron-log');
 const crypto = require('crypto');
 
 const dbPath = path.join(app.getPath('userData'), 'betonlab_v4.db');
-// VERSI BARU
-const LATEST_DB_VERSION = 20;
+const LATEST_DB_VERSION = 21;
 let db;
 
 const hashPassword = (password) => {
@@ -18,7 +17,7 @@ const hashPassword = (password) => {
     return `${salt}:${hash}`;
 };
 
-// Memuat data dari file terpisah
+// Mengimpor array secara langsung
 const defaultFormulas = require('./defaultFormulas');
 const JMD_TEMPLATE_JSON = require('./jmdTemplate.js');
 
@@ -196,10 +195,8 @@ async function runMigrations(currentVersion) {
                     });
                 }
 
-                // === MIGRASI BARU UNTUK FASE 1 ===
                 if (currentVersion < 20) {
                     log.info('Migration to v20: Creating and seeding calculation_formulas table...');
-                    // 1. Buat tabel baru
                     await new Promise((res, rej) => db.run(`
                         CREATE TABLE IF NOT EXISTS calculation_formulas (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,7 +210,6 @@ async function runMigrations(currentVersion) {
                         )
                     `, (err) => err ? rej(err) : res()));
 
-                    // 2. Isi (seed) tabel dengan data default
                     const stmt = db.prepare("INSERT INTO calculation_formulas (formula_key, formula_name, formula_type, formula_value, variables, notes, is_editable) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     for (const formula of defaultFormulas) {
                         await new Promise((res, rej) => {
@@ -231,6 +227,21 @@ async function runMigrations(currentVersion) {
                     }
                     stmt.finalize();
                     log.info('Finished seeding calculation_formulas table.');
+                }
+                
+                if (currentVersion < 21) {
+                    log.info('Migration to v21: Creating formula_history table...');
+                    await new Promise((res, rej) => db.run(`
+                        CREATE TABLE IF NOT EXISTS formula_history (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            formula_id INTEGER NOT NULL,
+                            old_value TEXT NOT NULL,
+                            changed_at TEXT NOT NULL,
+                            changed_by_user_id INTEGER,
+                            FOREIGN KEY (formula_id) REFERENCES calculation_formulas(id) ON DELETE CASCADE,
+                            FOREIGN KEY (changed_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+                        )
+                    `, (err) => err ? rej(err) : res()));
                 }
 
 

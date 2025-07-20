@@ -12,7 +12,7 @@ const { registerReportLayoutHandlers } = require('./reportLayoutHandlers');
 const { registerUserHandlers } = require('./userHandlers');
 const { registerSampleHandlers } = require('./sampleHandlers');
 const { registerEquipmentHandlers } = require('./equipmentHandlers');
-const { registerFormulaHandlers } = require('./formulaHandlers'); // BARU
+const { registerFormulaHandlers } = require('./formulaHandlers');
 
 function registerIpcHandlers(db) {
     // Register semua handler dari modul-modul terpisah
@@ -26,7 +26,7 @@ function registerIpcHandlers(db) {
     registerUserHandlers(ipcMain, db);
     registerSampleHandlers(ipcMain, db);
     registerEquipmentHandlers(ipcMain, db);
-    registerFormulaHandlers(ipcMain, db); // BARU
+    registerFormulaHandlers(ipcMain, db);
 }
 
 module.exports = { registerIpcHandlers };

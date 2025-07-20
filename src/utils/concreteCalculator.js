@@ -1,27 +1,30 @@
 // src/utils/concreteCalculator.js
 // Deskripsi: Direfaktor total untuk menggunakan formula dinamis dari database.
+// PENINGKATAN: Mengganti new Function() dengan math.js untuk evaluasi ekspresi yang aman.
+// PENINGKATAN: Pesan error sekarang lebih spesifik, menyebutkan formula yang gagal.
+
+import { evaluate } from 'mathjs';
 
 /**
- * Mengevaluasi ekspresi matematika dengan aman.
+ * Mengevaluasi ekspresi matematika dengan aman menggunakan math.js.
  * @param {string} expression - String ekspresi, misal "fc + 1.64 * stdDev".
  * @param {object} context - Objek berisi nilai variabel, misal { fc: 30, stdDev: 4 }.
+ * @param {string} formulaKey - Kunci formula untuk pelaporan error yang lebih baik.
  * @returns {number} Hasil perhitungan.
  */
-function evaluateExpression(expression, context) {
+function evaluateExpression(expression, context, formulaKey) {
     try {
-        const variableNames = Object.keys(context);
-        const variableValues = Object.values(context);
-        const func = new Function(...variableNames, `return ${expression}`);
-        const result = func(...variableValues);
+        const result = evaluate(expression, context);
         if (typeof result !== 'number' || !isFinite(result)) {
             throw new Error(`Hasil tidak valid: ${result}`);
         }
         return result;
     } catch (e) {
-        console.error("Gagal mengevaluasi ekspresi:", expression, "dengan konteks:", context, "Error:", e);
-        throw new Error(`Sintaks formula tidak valid: "${expression}"`);
+        console.error(`Gagal mengevaluasi formula '${formulaKey}':`, expression, "dengan konteks:", context, "Error:", e);
+        throw new Error(`Sintaks formula tidak valid untuk '${formulaKey}'. Periksa di Manajemen Rumus.`);
     }
 }
+
 
 /**
  * Mencari nilai dalam tabel lookup JSON.
@@ -59,7 +62,8 @@ export function calculateMixDesign(inputs, formulas) {
     // 2. Hitung f'cr menggunakan formula dinamis
     const fcr = evaluateExpression(
         formulas.fcr_formula.formula_value, 
-        { fc: parseFloat(inputs.fc), stdDev: parseFloat(inputs.stdDev) }
+        { fc: parseFloat(inputs.fc), stdDev: parseFloat(inputs.stdDev) },
+        'fcr_formula'
     );
 
     // 3. Tentukan Rasio Air/Semen dari tabel dinamis
@@ -105,7 +109,8 @@ export function calculateMixDesign(inputs, formulas) {
 
     const fineAggrWeightSSD = evaluateExpression(
         formulas.fine_agg_weight.formula_value,
-        { volWater, volCement, volCoarseSSD, volAir, sgFine: parseFloat(inputs.sgFine) }
+        { volWater, volCement, volCoarseSSD, volAir, sgFine: parseFloat(inputs.sgFine) },
+        'fine_agg_weight'
     );
      if (fineAggrWeightSSD <= 0) {
         throw new Error("Volume agregat halus negatif. Periksa kembali properti material (BJ, Berat Isi).");
@@ -122,9 +127,9 @@ export function calculateMixDesign(inputs, formulas) {
         absorptionFine: parseFloat(inputs.absorptionFine),
     };
 
-    const correctedCoarseWeight = evaluateExpression(formulas.corrected_coarse_weight.formula_value, context);
-    const correctedFineWeight = evaluateExpression(formulas.corrected_fine_weight.formula_value, context);
-    const correctedWater = evaluateExpression(formulas.corrected_water.formula_value, context);
+    const correctedCoarseWeight = evaluateExpression(formulas.corrected_coarse_weight.formula_value, context, 'corrected_coarse_weight');
+    const correctedFineWeight = evaluateExpression(formulas.corrected_fine_weight.formula_value, context, 'corrected_fine_weight');
+    const correctedWater = evaluateExpression(formulas.corrected_water.formula_value, context, 'corrected_water');
 
     return {
         fcr, wcRatio, waterContent, cementContent, coarseAggrWeightSSD,

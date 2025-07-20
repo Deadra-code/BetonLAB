@@ -1,8 +1,7 @@
 // src/electron/defaultFormulas.js
 // Deskripsi: Berisi data awal untuk tabel `calculation_formulas`.
-// PERBAIKAN: Data dari sniData.js disalin langsung ke sini untuk menghindari error modul.
+// Versi ini menggunakan module.exports langsung pada array untuk kompatibilitas penuh.
 
-// Data ini disalin dari `sniData.js` untuk menghindari konflik modul CommonJS vs ESM.
 const waterAndAirContentData = {
     '10': { slump: { '10-30': 190, '30-50': 200, '80-100': 216, '150-180': 228 }, air: 3.0 },
     '12.5': { slump: { '10-30': 180, '30-50': 190, '80-100': 205, '150-180': 216 }, air: 2.5 },
@@ -77,13 +76,7 @@ const defaultFormulas = [
         formula_name: 'Berat Agregat Halus (SSD)',
         formula_type: 'expression',
         formula_value: '(1 - volWater - volCement - volCoarseSSD - volAir) * sgFine * 1000',
-        variables: JSON.stringify([
-            { name: "volWater", desc: "Volume air (m³)" },
-            { name: "volCement", desc: "Volume semen (m³)" },
-            { name: "volCoarseSSD", desc: "Volume agregat kasar SSD (m³)" },
-            { name: "volAir", desc: "Volume udara (%)" },
-            { name: "sgFine", desc: "Berat jenis agregat halus" }
-        ]),
+        variables: JSON.stringify([]),
         notes: 'Perhitungan berdasarkan metode volume absolut.',
         is_editable: 0,
     },
@@ -92,10 +85,7 @@ const defaultFormulas = [
         formula_name: 'Berat Ag. Kasar Terkoreksi',
         formula_type: 'expression',
         formula_value: 'coarseAggrWeightSSD * (1 + moistureCoarse / 100)',
-        variables: JSON.stringify([
-            { name: "coarseAggrWeightSSD", desc: "Berat agregat kasar SSD (kg)" },
-            { name: "moistureCoarse", desc: "Kadar air agregat kasar (%)" }
-        ]),
+        variables: JSON.stringify([]),
         notes: 'Menyesuaikan berat agregat kasar dengan kadar air lapangan.',
         is_editable: 0,
     },
@@ -104,10 +94,7 @@ const defaultFormulas = [
         formula_name: 'Berat Ag. Halus Terkoreksi',
         formula_type: 'expression',
         formula_value: 'fineAggrWeightSSD * (1 + moistureFine / 100)',
-        variables: JSON.stringify([
-            { name: "fineAggrWeightSSD", desc: "Berat agregat halus SSD (kg)" },
-            { name: "moistureFine", desc: "Kadar air agregat halus (%)" }
-        ]),
+        variables: JSON.stringify([]),
         notes: 'Menyesuaikan berat agregat halus dengan kadar air lapangan.',
         is_editable: 0,
     },
@@ -116,15 +103,7 @@ const defaultFormulas = [
         formula_name: 'Air Terkoreksi',
         formula_type: 'expression',
         formula_value: 'waterContent - (coarseAggrWeightSSD * (moistureCoarse / 100 - absorptionCoarse / 100)) - (fineAggrWeightSSD * (moistureFine / 100 - absorptionFine / 100))',
-        variables: JSON.stringify([
-            { name: "waterContent", desc: "Kebutuhan air awal (kg)" },
-            { name: "coarseAggrWeightSSD", desc: "Berat agregat kasar SSD (kg)" },
-            { name: "moistureCoarse", desc: "Kadar air ag. kasar (%)" },
-            { name: "absorptionCoarse", desc: "Penyerapan ag. kasar (%)" },
-            { name: "fineAggrWeightSSD", desc: "Berat agregat halus SSD (kg)" },
-            { name: "moistureFine", desc: "Kadar air ag. halus (%)" },
-            { name: "absorptionFine", desc: "Penyerapan ag. halus (%)" }
-        ]),
+        variables: JSON.stringify([]),
         notes: 'Menyesuaikan kebutuhan air berdasarkan kondisi kadar air dan penyerapan agregat.',
         is_editable: 0,
     }

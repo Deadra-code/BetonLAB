@@ -33,6 +33,7 @@
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.309.0",
+    "mathjs": "^12.4.2",
     "papaparse": "^5.4.1",
     "react": "^18.2.0",
     "react-color": "^2.19.3",
