@@ -3,6 +3,7 @@
 // yang jelas kepada pengguna jika perhitungan gagal karena formula yang tidak valid.
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -10,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import ResultCard from '../../components/ResultCard';
 import { useActiveMaterialProperties } from '../../hooks/useActiveMaterialProperties';
 import { defaultInputs, sniReferenceData } from '../../data/sniData';
-import { Loader2, ChevronsRight, Droplet, Wind, Package, Component, Waves, Beaker, ArrowLeft, ArrowRight, Save, BarChart2, BookOpen } from 'lucide-react';
+import { Loader2, ChevronsRight, Droplet, Wind, Package, Component, Waves, Beaker, ArrowLeft, ArrowRight, Save, BarChart2, BookOpen, FlaskConical } from 'lucide-react';
 import { useNotifier } from '../../hooks/useNotifier';
 import { calculateMixDesign } from '../../utils/concreteCalculator';
 import { writeLog } from '../../api/electronAPI';
@@ -21,8 +22,10 @@ import AddMaterialDialog from '../MaterialTesting/AddMaterialDialog';
 import ReferenceLibraryDialog from '../ReferenceLibrary/ReferenceLibraryDialog';
 import { useFormulas } from '../../hooks/useFormulas';
 import { CombinedGradationChart } from './components/CombinedGradationChart';
+import { CardFooter } from '../../components/ui/card';
 
 export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
+    const navigate = useNavigate();
     const [inputs, setInputs] = useState(defaultInputs);
     const [results, setResults] = useState(null);
     const { activeProperties, loading: propsLoading, refresh } = useActiveMaterialProperties(apiReady);
@@ -273,37 +276,14 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                             </div>
                         )}
                     </CardContent>
-                </Card>
-            )}
-
-            {step === 3 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Langkah 3: Hasil Rencana Campuran</CardTitle>
-                        <CardDescription>Berikut adalah hasil perhitungan proporsi campuran berdasarkan input Anda.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {!results ? (
-                            <div className="text-center py-12 text-muted-foreground"><Beaker className="mx-auto h-12 w-12 mb-4" /><p>Hasil perhitungan akan ditampilkan di sini. Kembali ke langkah sebelumnya untuk menghitung.</p></div>
-                        ) : (
-                            <div className="space-y-6">
-                                <div>
-                                    <h4 className="font-semibold mb-3 text-base">Parameter Kunci</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><ResultCard title="Kuat Tekan Target (f'cr)" data={results.fcr.toFixed(2)} unit="MPa" icon={<ChevronsRight size={22}/>} /><ResultCard title="Faktor Air/Semen (FAS)" data={results.wcRatio.toFixed(2)} unit="" icon={<Droplet size={22}/>} /></div>
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold mb-3 text-base">Proporsi per 1 m³ (Terkoreksi)</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><ResultCard title="Semen" data={results.cementContent.toFixed(2)} unit="kg" icon={<Package size={22}/>} /><ResultCard title="Air Koreksi" data={results.correctedWater.toFixed(2)} unit="kg" icon={<Droplet size={22}/>} /><ResultCard title="Ag. Kasar Lembab" data={results.correctedCoarseWeight.toFixed(2)} unit="kg" icon={<Component size={22}/>} /><ResultCard title="Ag. Halus Lembab" data={results.correctedFineWeight.toFixed(2)} unit="kg" icon={<Waves size={22}/>} /></div>
-                                </div>
-                                <Card>
-                                    <CardHeader><CardTitle className="flex items-center"><BarChart2 className="mr-2 h-5 w-5"/>Kurva Gradasi Gabungan</CardTitle><CardDescription>Visualisasi gradasi gabungan berdasarkan proporsi berat SSD.</CardDescription></CardHeader>
-                                    <CardContent>
-                                        <CombinedGradationChart chartRef={chartRef} fineAggregate={activeProperties.fineAggregates.find(m => m.id === parseInt(inputs.selectedFineId))} coarseAggregate={activeProperties.coarseAggregates.find(m => m.id === parseInt(inputs.selectedCoarseId))} mixProportions={results} />
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        )}
-                    </CardContent>
+                    {results && (
+                        <CardFooter className="bg-gray-50 -mx-6 -mb-6 px-6 py-4 mt-6 rounded-b-lg">
+                            <Button onClick={() => navigate('/sample-reception', { state: { projectId: trial.project_id, trialId: trial.id } })}>
+                                <FlaskConical className="mr-2 h-4 w-4" />
+                                Buat Benda Uji dari Trial Ini
+                            </Button>
+                        </CardFooter>
+                    )}
                 </Card>
             )}
 

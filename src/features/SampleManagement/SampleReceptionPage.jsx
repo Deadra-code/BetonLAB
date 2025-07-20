@@ -2,7 +2,8 @@
 // Deskripsi: Halaman penerimaan sampel kini dilengkapi dengan "Generator Benda Uji Massal"
 // untuk mempercepat input data berulang, mengimplementasikan Rancangan Efisiensi #2.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -63,10 +64,14 @@ const SpecimenGeneratorDialog = ({ onGenerate }) => {
 
 export default function SampleReceptionPage({ apiReady }) {
     const { user } = useAuthStore();
+    const location = useLocation();
     const { projects } = useProjects(apiReady);
     const [selectedProjectId, setSelectedProjectId] = useState('');
     const { trials } = useTrials(selectedProjectId);
     const { notify } = useNotifier();
+    
+    // State baru untuk menampung trialId yang dipilih dari navigasi
+    const [selectedTrialId, setSelectedTrialId] = useState(null);
 
     const [receptionData, setReceptionData] = useState({
         reception_date: new Date().toISOString().split('T')[0],
@@ -76,14 +81,39 @@ export default function SampleReceptionPage({ apiReady }) {
     const [specimens, setSpecimens] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleAddSpecimen = () => {
-        if (!selectedProjectId || trials.length === 0) {
+    useEffect(() => {
+        const { state } = location;
+        if (state && state.projectId) {
+            setSelectedProjectId(state.projectId.toString());
+            if (state.trialId) {
+                setSelectedTrialId(state.trialId);
+            }
+        }
+    }, [location]);
+
+    // Effect untuk auto-add specimen ketika datang dari JMD
+    useEffect(() => {
+        // Pastikan kita punya trialId, daftar trial sudah ter-load, dan belum ada spesimen
+        if (selectedTrialId && trials.length > 0 && specimens.length === 0) {
+            // Cek apakah trial yang dimaksud ada di dalam daftar
+            const trialExists = trials.some(t => t.id === selectedTrialId);
+            if (trialExists) {
+                handleAddSpecimen(selectedTrialId);
+                // Reset selectedTrialId agar tidak memicu lagi jika komponen re-render
+                setSelectedTrialId(null); 
+            }
+        }
+    }, [selectedTrialId, trials, specimens.length]);
+
+    const handleAddSpecimen = (trialId = null) => {
+        const targetTrialId = trialId || (trials.length > 0 ? trials[0].id : null);
+        if (!selectedProjectId || !targetTrialId) {
             notify.error("Pilih proyek dan pastikan proyek memiliki trial mix terlebih dahulu.");
             return;
         }
         setSpecimens([...specimens, {
             key: Date.now(),
-            trial_id: trials[0].id,
+            trial_id: targetTrialId,
             specimen_id: '',
             casting_date: new Date().toISOString().split('T')[0],
             age_days: 7,
