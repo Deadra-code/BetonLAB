@@ -18,7 +18,19 @@ import { Stepper } from '../../../components/ui/Stepper';
 export const ProjectForm = ({ project, onSave, children, apiReady }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [step, setStep] = useState(1);
-    const [formData, setFormData] = useState({});
+    const [formData, setFormData] = useState({
+        projectType: 'jmd',
+        projectName: '',
+        clientName: '',
+        clientAddress: '',
+        clientContactPerson: '',
+        clientContactNumber: '',
+        requestNumber: '',
+        requestDate: new Date().toISOString().split('T')[0],
+        testingRequests: '',
+        projectNotes: '',
+        assignedTo: '',
+    });
     const [isSaving, setIsSaving] = useState(false);
     const { notify } = useNotifier();
     const isEditing = !!project?.id;
@@ -31,20 +43,36 @@ export const ProjectForm = ({ project, onSave, children, apiReady }) => {
     // Inisialisasi form saat dialog dibuka
     useEffect(() => {
         if (isOpen) {
-            const initialData = {
-                projectType: 'jmd',
-                projectName: project?.projectName || '',
-                clientName: project?.clientName || '',
-                clientAddress: project?.clientAddress || '',
-                clientContactPerson: project?.clientContactPerson || '',
-                clientContactNumber: project?.clientContactNumber || '',
-                requestNumber: project?.requestNumber || '',
-                requestDate: project?.requestDate || new Date().toISOString().split('T')[0],
-                testingRequests: project?.testingRequests || '',
-                projectNotes: project?.projectNotes || '',
-                assignedTo: project?.assignedTo || '',
-            };
-            setFormData(initialData);
+            if (project) {
+                setFormData({
+                    projectType: project.projectType || 'jmd',
+                    projectName: project.projectName || '',
+                    clientName: project.clientName || '',
+                    clientAddress: project.clientAddress || '',
+                    clientContactPerson: project.clientContactPerson || '',
+                    clientContactNumber: project.clientContactNumber || '',
+                    requestNumber: project.requestNumber || '',
+                    requestDate: project.requestDate || new Date().toISOString().split('T')[0],
+                    testingRequests: project.testingRequests || '',
+                    projectNotes: project.projectNotes || '',
+                    assignedTo: project.assignedTo || '',
+                });
+            } else {
+                // Reset form untuk proyek baru
+                setFormData({
+                    projectType: 'jmd',
+                    projectName: '',
+                    clientName: '',
+                    clientAddress: '',
+                    clientContactPerson: '',
+                    clientContactNumber: '',
+                    requestNumber: '',
+                    requestDate: new Date().toISOString().split('T')[0],
+                    testingRequests: '',
+                    projectNotes: '',
+                    assignedTo: '',
+                });
+            }
             setStep(1); // Selalu mulai dari langkah 1
         }
     }, [isOpen, project]);
