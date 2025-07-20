@@ -1,5 +1,5 @@
-// Lokasi file: public/preload.js
-// Deskripsi: Mengekspos API baru untuk manajemen peralatan dan log benda uji.
+// public/preload.js
+// Deskripsi: Mengekspos API formula ke frontend.
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('api', {
     createSampleReception: (data) => ipcRenderer.invoke('samples:reception-create', data),
     getMyTasks: (technicianId) => ipcRenderer.invoke('samples:get-my-tasks', technicianId),
     
-    // TAHAP 2: Equipment & Specimen Log API
+    // Equipment & Specimen Log API
     getEquipment: () => ipcRenderer.invoke('equipment:get-all'),
     addEquipment: (equipment) => ipcRenderer.invoke('equipment:add', equipment),
     updateEquipment: (equipment) => ipcRenderer.invoke('equipment:update', equipment),
@@ -89,6 +89,10 @@ contextBridge.exposeInMainWorld('api', {
     addReportLayout: (layout) => ipcRenderer.invoke('db:add-report-layout', layout),
     updateReportLayout: (layout) => ipcRenderer.invoke('db:update-report-layout', layout),
     deleteReportLayout: (id) => ipcRenderer.invoke('db:delete-report-layout', id),
+
+    // === API BARU UNTUK FORMULA ===
+    getFormulas: () => ipcRenderer.invoke('formulas:get-all'),
+    updateFormula: (formulaData) => ipcRenderer.invoke('formulas:update', formulaData),
 });
 
 window.dispatchEvent(new Event('api-ready'));

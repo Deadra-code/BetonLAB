@@ -1,9 +1,10 @@
-// Lokasi file: src/App.jsx
-// Deskripsi: Rombak total untuk mengintegrasikan alur otentikasi.
-// Aplikasi sekarang akan menampilkan halaman Login jika pengguna belum terotentikasi.
+// src/App.jsx
+// DESKRIPSI: Memperbaiki masalah double scrollbar dengan memastikan
+// kontainer utama tidak bisa di-scroll dan hanya area konten <main>
+// yang memiliki overflow.
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Beaker, FolderKanban, Settings, LayoutDashboard, BookOpen, FileSignature, Bell, AlertTriangle, LogOut, UserCog } from 'lucide-react';
+import { Loader2, Beaker, FolderKanban, Settings, LayoutDashboard, BookOpen, FileSignature, Bell, AlertTriangle, LogOut, UserCog, Calculator } from 'lucide-react';
 import { useSettings } from './hooks/useSettings';
 import ProjectManager from './features/Projects/ProjectManager.jsx';
 import MaterialTestingManager from './features/MaterialTesting/MaterialTestingManager.jsx';
@@ -24,12 +25,14 @@ import ReferenceLibraryManager from './features/ReferenceLibrary/ReferenceLibrar
 import ReportBuilderPage from './features/Reporting/ReportBuilderPage.jsx';
 import AppTour from './features/Onboarding/AppTour.jsx';
 
-// --- Impor untuk Otentikasi ---
+// Impor untuk Otentikasi & Fitur Baru
 import { useAuthStore } from './hooks/useAuth.js';
 import LoginPage from './features/Auth/LoginPage.jsx';
 import UserManagementPage from './features/Auth/UserManagementPage.jsx';
+import FormulaManagerPage from './features/Formulas/FormulaManagerPage.jsx';
 
 const NotificationBell = ({ notifications, onNotificationClick }) => {
+    // ... (Konten komponen ini tidak berubah)
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -81,12 +84,9 @@ export default function App() {
     const [comparisonTrials, setComparisonTrials] = useState([]);
     const [reportBuilderContext, setReportBuilderContext] = useState(null);
     const [isTourRunning, setIsTourRunning] = useState(false);
-    
-    // PERBAIKAN: State untuk menangani navigasi yang tertunda
     const [pendingNavigation, setPendingNavigation] = useState(null);
 
     const { isAuthenticated, user, logout } = useAuthStore();
-
     const { settings, handleUpdateSetting, handleSelectLogo, handleBackupDatabase, handleRestoreDatabase } = useSettings(apiReady);
     const { notifications } = useNotifications(apiReady);
 
@@ -149,7 +149,6 @@ export default function App() {
         if (type === 'project') {
             handleProjectSelect(item);
         } else if (type === 'trial') {
-            // PERBAIKAN: Gunakan state 'pendingNavigation' daripada setTimeout
             navigateTo('projects');
             setPendingNavigation({ type: 'trial', item });
         } else if (type === 'material') {
@@ -179,7 +178,6 @@ export default function App() {
             case 'dashboard':
                 return <Dashboard apiReady={apiReady} onNavigate={navigateTo} onProjectSelect={handleProjectSelect} />;
             case 'projects':
-                // PERBAIKAN: Teruskan props untuk pending navigation
                 return <ProjectManager 
                             apiReady={apiReady} 
                             onTrialSelect={handleTrialSelect} 
@@ -197,6 +195,8 @@ export default function App() {
                 return <ReportBuilderPage context={reportBuilderContext} apiReady={apiReady} />;
             case 'user-management':
                 return <UserManagementPage apiReady={apiReady} currentUser={user} />;
+            case 'formulas':
+                return <FormulaManagerPage apiReady={apiReady} />;
             default:
                 return <Dashboard apiReady={apiReady} onNavigate={navigateTo} onProjectSelect={handleProjectSelect} />;
         }
@@ -219,7 +219,8 @@ export default function App() {
         <TooltipProvider delayDuration={0}>
             <ToasterProvider />
             <AppTour run={isTourRunning} onTourEnd={handleTourEnd} />
-            <div className={`flex h-screen font-sans ${settings.theme}`}>
+            {/* PERBAIKAN: Tambahkan `overflow-hidden` ke kontainer terluar */}
+            <div className={`flex h-screen font-sans overflow-hidden ${settings.theme}`}>
                 <div className="flex h-full w-full bg-background text-foreground">
                     <nav className="w-20 border-r bg-card p-4 flex flex-col items-center flex-shrink-0">
                         <div className="mb-8"><img src={settings.logoPath ? `data:image/png;base64,${settings.logoBase64}` : 'https://placehold.co/40x40/e2e8f0/303030?text=BL'} alt="Logo" className="w-10 h-10 object-contain rounded-lg"/></div>
@@ -229,6 +230,9 @@ export default function App() {
                             <Tooltip><TooltipTrigger asChild><Button className="nav-materials" variant={mainView === 'materials' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('materials')}><Beaker className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Pengujian Material</TooltipContent></Tooltip>
                             { (user.role === 'admin' || user.role === 'penyelia') && <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'report-builder' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('report-builder')}><FileSignature className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Report Builder</TooltipContent></Tooltip> }
                             <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'references' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('references')}><BookOpen className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Pustaka Referensi</TooltipContent></Tooltip>
+                            
+                            { user.role === 'admin' && <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'formulas' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('formulas')}><Calculator className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Manajemen Rumus</TooltipContent></Tooltip> }
+
                         </div>
                         <div className="mt-auto flex flex-col items-center space-y-2">
                              { user.role === 'admin' && <Tooltip><TooltipTrigger asChild><Button variant={mainView === 'user-management' ? 'secondary' : 'ghost'} size="icon" onClick={() => navigateTo('user-management')}><UserCog className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent side="right">Manajemen Pengguna</TooltipContent></Tooltip> }

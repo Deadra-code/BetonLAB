@@ -1,17 +1,16 @@
-// Lokasi file: src/features/Projects/JobMixDesign.js
-// Deskripsi: Rombak total untuk meningkatkan UX dengan memisahkan simpan/hitung,
-// membuat stepper interaktif, dan sinkronisasi data material otomatis.
+// src/features/Projects/JobMixDesign.jsx
+// Deskripsi: Menambahkan penanganan error yang lebih baik untuk memberikan umpan balik
+// yang jelas kepada pengguna jika perhitungan gagal karena formula yang tidak valid.
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import ResultCard from '../../components/ResultCard';
 import { useActiveMaterialProperties } from '../../hooks/useActiveMaterialProperties';
 import { defaultInputs, sniReferenceData } from '../../data/sniData';
-import { Loader2, ChevronsRight, Droplet, Wind, Package, Component, Waves, Beaker, ArrowLeft, ArrowRight, Save, BarChart2, AlertTriangle, CheckCircle, BookOpen, RefreshCw } from 'lucide-react';
+import { Loader2, ChevronsRight, Droplet, Wind, Package, Component, Waves, Beaker, ArrowLeft, ArrowRight, Save, BarChart2, BookOpen } from 'lucide-react';
 import { useNotifier } from '../../hooks/useNotifier';
 import { calculateMixDesign } from '../../utils/concreteCalculator';
 import { writeLog } from '../../api/electronAPI';
@@ -20,52 +19,8 @@ import ValidatedInput from '../../components/ui/ValidatedInput';
 import HelpTooltip from '../../components/ui/HelpTooltip';
 import AddMaterialDialog from '../MaterialTesting/AddMaterialDialog';
 import ReferenceLibraryDialog from '../ReferenceLibrary/ReferenceLibraryDialog';
-
-const CombinedGradationChart = ({ fineAggregate, coarseAggregate, mixProportions, chartRef }) => {
-    const chartData = useMemo(() => {
-        if (!fineAggregate || !coarseAggregate || !mixProportions) return [];
-        
-        const fineSieve = fineAggregate.properties.sieve_table;
-        const coarseSieve = coarseAggregate.properties.sieve_table;
-        if (!fineSieve || !coarseSieve) return [];
-
-        const totalWeight = mixProportions.fineAggrWeightSSD + mixProportions.coarseAggrWeightSSD;
-        const fineRatio = mixProportions.fineAggrWeightSSD / totalWeight;
-        const coarseRatio = mixProportions.coarseAggrWeightSSD / totalWeight;
-
-        const allSieveSizes = [...new Set([...Object.keys(fineSieve), ...Object.keys(coarseSieve)])]
-            .map(s => parseFloat(s)).sort((a, b) => b - a);
-
-        return allSieveSizes.map(size => {
-            const finePassing = fineSieve[String(size)]?.passingPercent || 0;
-            const coarsePassing = coarseSieve[String(size)]?.passingPercent || 0;
-            return {
-                size: size,
-                'Gabungan': (finePassing * fineRatio) + (coarsePassing * coarseRatio),
-            };
-        });
-    }, [fineAggregate, coarseAggregate, mixProportions]);
-
-    if (chartData.length === 0) {
-        return <p className="text-sm text-muted-foreground">Data saringan tidak lengkap untuk menampilkan grafik.</p>;
-    }
-
-    return (
-        <div ref={chartRef} className="bg-card p-4 rounded-lg border">
-            <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="size" type="number" scale="log" domain={[0.1, 100]} reversed ticks={[0.15, 0.3, 0.6, 1.18, 2.36, 4.75, 10, 20, 40, 100]} label={{ value: "Ukuran Saringan (mm)", position: "insideBottom", offset: -15 }} />
-                    <YAxis domain={[0, 100]} label={{ value: '% Lolos', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
-                    <Legend verticalAlign="top" />
-                    <Line type="monotone" dataKey="Gabungan" stroke="#16a34a" strokeWidth={2} dot={false} />
-                </LineChart>
-            </ResponsiveContainer>
-        </div>
-    );
-};
-
+import { useFormulas } from '../../hooks/useFormulas';
+import { CombinedGradationChart } from './components/CombinedGradationChart';
 
 export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
     const [inputs, setInputs] = useState(defaultInputs);
@@ -77,11 +32,13 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
     const [isCalculating, setIsCalculating] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
+    const { formulas, loading: formulasLoading } = useFormulas(apiReady);
+
     useEffect(() => {
         if (trial) {
             const designInput = (trial.design_input && Object.keys(trial.design_input).length > 0) ? trial.design_input : defaultInputs;
             const sanitizedInputs = Object.entries(designInput).reduce((acc, [key, value]) => {
-                if (key === 'admixture' && (typeof value !== 'object' || value === null)) { acc[key] = { name: '', waterReduction: '' }; } 
+                if (key === 'admixture' && (typeof value !== 'object' || value === null)) { acc[key] = { name: '', waterReduction: 0 }; } 
                 else { acc[key] = value !== null && value !== undefined ? value : ''; }
                 return acc;
             }, {});
@@ -132,7 +89,7 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
 
         setInputs(prev => ({ ...prev, [materialKey]: materialId, ...sanitizedProps }));
         setIsDirty(true);
-        notify.info(`Properti untuk ${type.replace(/_/g, ' ')} telah diperbarui.`);
+        notify.success(`Properti untuk ${type.replace(/_/g, ' ')} telah diperbarui.`);
     };
     
     const handleSaveInputsOnly = async () => {
@@ -150,10 +107,15 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
     };
 
     const handleCalculate = async () => {
+        if (formulasLoading || Object.keys(formulas).length === 0) {
+            notify.error("Data formula belum siap. Mohon tunggu sebentar.");
+            return;
+        }
+
         setIsCalculating(true);
         await new Promise(res => setTimeout(res, 300)); 
         try {
-            const newResults = calculateMixDesign(inputs);
+            const newResults = calculateMixDesign(inputs, formulas);
             setResults(newResults);
             setStep(3);
             notify.success("Perhitungan berhasil diselesaikan.");
@@ -166,7 +128,9 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
             await onSave({ ...trial, design_input: numericInputs, design_result: newResults });
             setIsDirty(false);
         } catch (e) {
-            notify.error(e.message || "Perhitungan gagal. Periksa kembali semua input.");
+            // === UMPAN BALIK ERROR (Langkah 2 Fase 3) ===
+            const errorMessage = `Perhitungan gagal: ${e.message}. Periksa formula terkait di halaman Manajemen Rumus.`;
+            notify.error(errorMessage);
             writeLog('error', `Calculation failed for trial: ${trial.trial_name}. Error: ${e.message}`);
         } finally {
             setIsCalculating(false);
@@ -196,10 +160,11 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
         }
     };
 
-    if (propsLoading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    if (propsLoading || formulasLoading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
     const steps = ["Parameter Desain", "Properti Material", "Hasil Campuran"];
 
+    // ... (Sisa komponen JSX tetap sama)
     return (
         <div className="space-y-6">
             <Stepper 
@@ -263,7 +228,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                             <div>
                                 <Label>Agregat Halus</Label>
                                 <div className="flex items-center gap-2">
-                                    {/* PERBAIKAN: Hapus 'disabled' dan tambahkan opsi manual */}
                                     <Select onValueChange={val => handleMaterialSelect('fine_aggregate', val)} value={String(inputs.selectedFineId) || 'manual'}>
                                         <SelectTrigger><SelectValue placeholder="Pilih Agregat Halus..."/></SelectTrigger>
                                         <SelectContent>
@@ -277,7 +241,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                             <div>
                                 <Label>Agregat Kasar</Label>
                                 <div className="flex items-center gap-2">
-                                    {/* PERBAIKAN: Hapus 'disabled' dan tambahkan opsi manual */}
                                     <Select onValueChange={val => handleMaterialSelect('coarse_aggregate', val)} value={String(inputs.selectedCoarseId) || 'manual'}>
                                         <SelectTrigger><SelectValue placeholder="Pilih Agregat Kasar..."/></SelectTrigger>
                                         <SelectContent>
@@ -290,7 +253,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                             </div>
                         </div>
                         
-                        {/* PERBAIKAN: Tampilkan field manual hanya jika tidak ada material yang dipilih */}
                         {(inputs.selectedFineId === null || inputs.selectedCoarseId === null) && (
                             <div className="space-y-4 border-l pl-6">
                                 <p className="text-sm font-semibold text-muted-foreground">Properti Manual</p>

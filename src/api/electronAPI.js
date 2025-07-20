@@ -1,5 +1,5 @@
-// Lokasi file: src/api/electronAPI.js
-// Deskripsi: Menambahkan fungsi pembungkus untuk API manajemen peralatan.
+// src/api/electronAPI.js
+// Deskripsi: Menambahkan fungsi pembungkus untuk API formula.
 
 const isApiReady = () => {
     if (window.api) return true;
@@ -7,24 +7,17 @@ const isApiReady = () => {
     return false;
 };
 
-// Auth & Users
 export const login = (credentials) => isApiReady() ? window.api.login(credentials) : Promise.reject(new Error("API not ready"));
 export const getUsers = () => isApiReady() ? window.api.getUsers() : Promise.resolve([]);
 export const addUser = (userData) => isApiReady() ? window.api.addUser(userData) : Promise.reject(new Error("API not ready"));
 export const deleteUser = (id) => isApiReady() ? window.api.deleteUser(id) : Promise.reject(new Error("API not ready"));
-
-// Sample Management
 export const createSampleReception = (data) => isApiReady() ? window.api.createSampleReception(data) : Promise.reject(new Error("API not ready"));
 export const getMyTasks = (technicianId) => isApiReady() ? window.api.getMyTasks(technicianId) : Promise.resolve([]);
-
-// TAHAP 2: Equipment & Specimen Log API
 export const getEquipment = () => isApiReady() ? window.api.getEquipment() : Promise.resolve([]);
 export const addEquipment = (equipment) => isApiReady() ? window.api.addEquipment(equipment) : Promise.reject(new Error("API not ready"));
 export const updateEquipment = (equipment) => isApiReady() ? window.api.updateEquipment(equipment) : Promise.reject(new Error("API not ready"));
 export const deleteEquipment = (id) => isApiReady() ? window.api.deleteEquipment(id) : Promise.reject(new Error("API not ready"));
 export const getSpecimenLog = (concreteTestId) => isApiReady() ? window.api.getSpecimenLog(concreteTestId) : Promise.resolve([]);
-
-// Projects
 export const getProjects = (showArchived) => isApiReady() ? window.api.getProjects(showArchived) : Promise.resolve([]);
 export const addProject = (project) => isApiReady() ? window.api.addProject(project) : Promise.reject(new Error("API not ready"));
 export const updateProject = (project) => isApiReady() ? window.api.updateProject(project) : Promise.reject(new Error("API not ready"));
@@ -32,8 +25,6 @@ export const deleteProject = (id) => isApiReady() ? window.api.deleteProject(id)
 export const setProjectStatus = (data) => isApiReady() ? window.api.setProjectStatus(data) : Promise.reject(new Error("API not ready"));
 export const duplicateProject = (id) => isApiReady() ? window.api.duplicateProject(id) : Promise.reject(new Error("API not ready"));
 export const getProjectStatusCounts = () => isApiReady() ? window.api.getProjectStatusCounts() : Promise.resolve({ active: 0, archived: 0 });
-
-// ... sisa API tetap sama ...
 export const getTrialsForProject = (projectId) => isApiReady() ? window.api.getTrialsForProject(projectId) : Promise.resolve([]);
 export const getAllTrials = () => isApiReady() ? window.api.getAllTrials() : Promise.resolve([]);
 export const addTrial = (trial) => isApiReady() ? window.api.addTrial(trial) : Promise.reject(new Error("API not ready"));
@@ -84,3 +75,7 @@ export const getReportLayouts = () => isApiReady() ? window.api.getReportLayouts
 export const addReportLayout = (layout) => isApiReady() ? window.api.addReportLayout(layout) : Promise.reject(new Error("API not ready"));
 export const updateReportLayout = (layout) => isApiReady() ? window.api.updateReportLayout(layout) : Promise.reject(new Error("API not ready"));
 export const deleteReportLayout = (id) => isApiReady() ? window.api.deleteReportLayout(id) : Promise.reject(new Error("API not ready"));
+
+// === FUNGSI BARU UNTUK FORMULA ===
+export const getFormulas = () => isApiReady() ? window.api.getFormulas() : Promise.resolve([]);
+export const updateFormula = (formulaData) => isApiReady() ? window.api.updateFormula(formulaData) : Promise.reject(new Error("API not ready"));
