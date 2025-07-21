@@ -1,6 +1,6 @@
 // src/features/Projects/JobMixDesign.jsx
-// Deskripsi: Menambahkan penanganan error yang lebih baik untuk memberikan umpan balik
-// yang jelas kepada pengguna jika perhitungan gagal karena formula yang tidak valid.
+// Deskripsi: Menambahkan tombol "Buat Benda Uji" setelah perhitungan berhasil
+// untuk mengintegrasikan alur kerja ke Penerimaan Sampel (Rancangan Efisiensi #3).
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '../../components/ui/button';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import ResultCard from '../../components/ResultCard';
 import { useActiveMaterialProperties } from '../../hooks/useActiveMaterialProperties';
 import { defaultInputs, sniReferenceData } from '../../data/sniData';
-import { Loader2, ChevronsRight, Droplet, Wind, Package, Component, Waves, Beaker, ArrowLeft, ArrowRight, Save, BarChart2, BookOpen } from 'lucide-react';
+import { Loader2, ChevronsRight, Droplet, Wind, Package, Component, Waves, Beaker, ArrowLeft, ArrowRight, Save, BarChart2, BookOpen, PlusSquare } from 'lucide-react';
 import { useNotifier } from '../../hooks/useNotifier';
 import { calculateMixDesign } from '../../utils/concreteCalculator';
 import { writeLog } from '../../api/electronAPI';
@@ -22,7 +22,7 @@ import ReferenceLibraryDialog from '../ReferenceLibrary/ReferenceLibraryDialog';
 import { useFormulas } from '../../hooks/useFormulas';
 import { CombinedGradationChart } from './components/CombinedGradationChart';
 
-export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
+export default function JobMixDesign({ trial, onSave, apiReady, chartRef, onNavigateToReception }) { // Tambahkan prop onNavigateToReception
     const [inputs, setInputs] = useState(defaultInputs);
     const [results, setResults] = useState(null);
     const { activeProperties, loading: propsLoading, refresh } = useActiveMaterialProperties(apiReady);
@@ -128,7 +128,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
             await onSave({ ...trial, design_input: numericInputs, design_result: newResults });
             setIsDirty(false);
         } catch (e) {
-            // === UMPAN BALIK ERROR (Langkah 2 Fase 3) ===
             const errorMessage = `Perhitungan gagal: ${e.message}. Periksa formula terkait di halaman Manajemen Rumus.`;
             notify.error(errorMessage);
             writeLog('error', `Calculation failed for trial: ${trial.trial_name}. Error: ${e.message}`);
@@ -164,7 +163,6 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
 
     const steps = ["Parameter Desain", "Properti Material", "Hasil Campuran"];
 
-    // ... (Sisa komponen JSX tetap sama)
     return (
         <div className="space-y-6">
             <Stepper 
@@ -184,7 +182,7 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
                         <CardDescription>Masukkan parameter dasar untuk rencana campuran beton Anda.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="flex items-center">
                                 <ValidatedInput id="fc" label="Kuat Tekan (f'c)" unit="MPa" value={inputs.fc} onChange={e => handleInputChange('fc', e.target.value)} isValid={parseFloat(inputs.fc) > 0} errorText="Nilai harus lebih dari 0" />
                                 <HelpTooltip content={sniReferenceData.fc.content} />
@@ -279,8 +277,16 @@ export default function JobMixDesign({ trial, onSave, apiReady, chartRef }) {
             {step === 3 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Langkah 3: Hasil Rencana Campuran</CardTitle>
-                        <CardDescription>Berikut adalah hasil perhitungan proporsi campuran berdasarkan input Anda.</CardDescription>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Langkah 3: Hasil Rencana Campuran</CardTitle>
+                                <CardDescription>Berikut adalah hasil perhitungan proporsi campuran berdasarkan input Anda.</CardDescription>
+                            </div>
+                             {/* --- RANCANGAN #3: Tombol Integrasi --- */}
+                            <Button onClick={() => onNavigateToReception(trial.project_id, trial.id)}>
+                                <PlusSquare className="mr-2 h-4 w-4" /> Buat Benda Uji dari Trial Ini
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {!results ? (

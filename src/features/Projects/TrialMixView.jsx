@@ -1,18 +1,23 @@
 // ========================================================================
 // Lokasi file: src/features/Projects/TrialMixView.jsx
-// Perbaikan: Mengubah ekstensi impor JobMixDesign menjadi .jsx
+// Implementasi: Rancangan #5 - "Satu-Klik" Laporan Komposisi Awal
+// Deskripsi: Menambahkan tombol "Cetak Komposisi Awal" yang memicu
+// pembuatan PDF sederhana dan cepat untuk dikirim ke rekanan.
 // ========================================================================
 import React, { useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import JobMixDesign from './JobMixDesign.jsx'; // <-- PERBAIKAN DI SINI
+import JobMixDesign from './JobMixDesign.jsx';
 import CompressiveStrengthTest from './CompressiveStrengthTest.jsx';
-import { Beaker, FileText, Notebook, TrendingUp, FileSignature, Target, Droplets, Book } from 'lucide-react';
+import { Beaker, FileText, Notebook, TrendingUp, FileSignature, Target, Droplets, Book, Printer } from 'lucide-react';
 import { useTrials } from '../../hooks/useTrials.js';
 import Breadcrumb from '../../components/ui/breadcrumb.jsx';
 import { NotesTab } from './NotesTab.jsx';
 import QualityControlChart from './QualityControlChart.jsx';
 import { useConcreteTests } from '../../hooks/useConcreteTests.js';
 import { Button } from '../../components/ui/button';
+import { generateInitialCompositionPdf } from '../../utils/pdfGenerator.jsx'; // Impor fungsi baru
+import { useSettings } from '../../hooks/useSettings.js'; // Impor untuk mendapatkan data lab
+import { useNotifier } from '../../hooks/useNotifier.js'; // Impor untuk notifikasi
 
 const InfoHeaderCard = ({ label, value, unit, icon }) => (
     <div className="flex items-center p-3 bg-muted/50 rounded-lg">
@@ -26,19 +31,35 @@ const InfoHeaderCard = ({ label, value, unit, icon }) => (
     </div>
 );
 
-export default function TrialMixView({ trial, onBack, apiReady, onNavigateToReportBuilder }) {
+export default function TrialMixView({ trial, onBack, apiReady, onNavigateToReportBuilder, onNavigateToReception }) {
     const strengthChartRef = useRef(null);
     const sqcChartRef = useRef(null);
     const gradationChartRef = useRef(null);
 
     const { updateTrial } = useTrials(trial?.project_id);
     const { tests } = useConcreteTests(trial?.id);
+    const { settings } = useSettings(apiReady); // Dapatkan settings untuk info lab
+    const { notify } = useNotifier();
 
     const breadcrumbPaths = [
         { label: 'Manajemen Proyek', onClick: onBack },
         { label: trial.projectName, onClick: onBack },
         { label: trial.trial_name },
     ];
+
+    // --- FUNGSI BARU untuk Laporan Cepat ---
+    const handleQuickReport = async () => {
+        if (!trial.design_result) {
+            notify.error("Data hasil perhitungan JMD tidak tersedia.");
+            return;
+        }
+        try {
+            await generateInitialCompositionPdf({ trial, settings });
+            notify.success("Laporan Komposisi Awal berhasil dibuat.");
+        } catch (error) {
+            notify.error(`Gagal membuat PDF: ${error.message}`);
+        }
+    };
 
     if (!trial) {
         return (
@@ -55,15 +76,20 @@ export default function TrialMixView({ trial, onBack, apiReady, onNavigateToRepo
                 <Breadcrumb paths={breadcrumbPaths} />
                 <div className="flex justify-between items-center">
                     <h2 className="text-3xl font-bold">{trial.trial_name}</h2>
-                    <Button 
-                        variant="outline" 
-                        onClick={() => onNavigateToReportBuilder({ 
-                            project: { id: trial.project_id, projectName: trial.projectName }, 
-                            trial: trial 
-                        })}
-                    >
-                        <FileSignature className="mr-2 h-4 w-4" /> Buat Laporan Trial
-                    </Button>
+                    <div className="flex gap-2">
+                        {/* Tombol Laporan Cepat Baru */}
+                        <Button variant="outline" onClick={handleQuickReport}>
+                            <Printer className="mr-2 h-4 w-4" /> Cetak Komposisi Awal
+                        </Button>
+                        <Button 
+                            onClick={() => onNavigateToReportBuilder({ 
+                                project: { id: trial.project_id, projectName: trial.projectName }, 
+                                trial: trial 
+                            })}
+                        >
+                            <FileSignature className="mr-2 h-4 w-4" /> Buat Laporan Lengkap
+                        </Button>
+                    </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
@@ -83,10 +109,10 @@ export default function TrialMixView({ trial, onBack, apiReady, onNavigateToRepo
                     </TabsList>
                 </div>
                 <TabsContent value="design" className="p-6 flex-grow">
-                    <JobMixDesign trial={trial} onSave={updateTrial} apiReady={apiReady} chartRef={gradationChartRef} />
+                    <JobMixDesign trial={trial} onSave={updateTrial} apiReady={apiReady} chartRef={gradationChartRef} onNavigateToReception={onNavigateToReception} />
                 </TabsContent>
                 <TabsContent value="testing" className="p-6 flex-grow">
-                    <CompressiveStrengthTest trial={trial} chartRef={strengthChartRef} />
+                    <CompressiveStrengthTest trial={trial} chartRef={strengthChartRef} apiReady={apiReady} />
                 </TabsContent>
                 <TabsContent value="quality_control" className="p-6 flex-grow">
                     <QualityControlChart tests={tests} targetStrength={trial?.design_result?.fcr} chartRef={sqcChartRef} />

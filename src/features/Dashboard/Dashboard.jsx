@@ -1,5 +1,7 @@
 // Lokasi file: src/features/Dashboard/Dashboard.jsx
-// Deskripsi: Penambahan komponen ProjectStatusChart untuk menampilkan KPI.
+// Implementasi: Rancangan #6 - Dasbor Berbasis Tindakan
+// Deskripsi: Komponen notifikasi di dasbor kini memiliki tombol "Input Hasil"
+// yang akan memicu dialog input data uji secara langsung.
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProjects } from '../../hooks/useProjects';
@@ -8,7 +10,7 @@ import { useAllTrials } from '../../hooks/useAllTrials';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Package, Folder, Clock, Beaker, User, FilterX, PieChart as PieIcon, Loader2 } from 'lucide-react';
+import { Package, Folder, Clock, Beaker, User, FilterX, PieChart as PieIcon, Loader2, Edit } from 'lucide-react';
 import * as api from '../../api/electronAPI';
 
 const RecentProjects = ({ projects, onProjectSelect, title = "Proyek Terakhir Dikerjakan" }) => (
@@ -110,7 +112,6 @@ const TrialMixStats = ({ trials, onBarClick }) => {
     );
 };
 
-// --- KOMPONEN BARU UNTUK KPI ---
 const ProjectStatusChart = ({ apiReady }) => {
     const [stats, setStats] = useState({ active: 0, archived: 0 });
     const [loading, setLoading] = useState(true);
@@ -131,7 +132,7 @@ const ProjectStatusChart = ({ apiReady }) => {
         { name: 'Aktif', value: stats.active || 0 },
         { name: 'Diarsipkan', value: stats.archived || 0 }
     ];
-    const COLORS = ['#3b82f6', '#6b7280']; // blue-500, gray-500
+    const COLORS = ['#3b82f6', '#6b7280'];
 
     return (
         <Card className="shadow-sm hover:shadow-md transition-shadow">
@@ -161,7 +162,35 @@ const ProjectStatusChart = ({ apiReady }) => {
     );
 };
 
-export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
+// --- KOMPONEN BARU: Kartu Notifikasi yang Interaktif ---
+const ActionableNotificationCard = ({ notifications, onEditSpecimen }) => (
+    <Card className="shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+                <Beaker className="mr-3 h-5 w-5 text-primary" /> Tugas & Pengujian Jatuh Tempo
+            </CardTitle>
+        </CardHeader>
+        <CardContent>
+            {notifications.length > 0 ? (
+                <div className="space-y-3">
+                    {notifications.map(notif => (
+                        <div key={notif.id} className="flex items-center justify-between p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-800">
+                            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">{notif.message}</p>
+                            <Button size="sm" variant="secondary" onClick={() => onEditSpecimen(notif.context.specimenId)}>
+                                <Edit className="mr-2 h-4 w-4" /> Input Hasil
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-sm text-center py-8 text-muted-foreground">Tidak ada pengujian yang jatuh tempo hari ini atau besok.</p>
+            )}
+        </CardContent>
+    </Card>
+);
+
+
+export default function Dashboard({ apiReady, onNavigate, onProjectSelect, notifications, onEditSpecimen }) {
     const { projects, loading: projectsLoading } = useProjects(apiReady);
     const { materials, loading: materialsLoading } = useMaterials(apiReady);
     const { allTrials, loading: trialsLoading } = useAllTrials(apiReady);
@@ -200,6 +229,8 @@ export default function Dashboard({ apiReady, onNavigate, onProjectSelect }) {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-6">
+                    {/* Komponen Notifikasi Baru */}
+                    <ActionableNotificationCard notifications={notifications} onEditSpecimen={onEditSpecimen} />
                     <RecentProjects projects={filteredProjects} onProjectSelect={onProjectSelect} title={filterTitle} />
                     {filterMonth !== null && (
                         <Button onClick={resetFilter} variant="outline" className="w-full">

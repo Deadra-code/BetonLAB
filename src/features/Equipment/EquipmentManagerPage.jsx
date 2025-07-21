@@ -1,5 +1,6 @@
 // Lokasi file: src/features/Equipment/EquipmentManagerPage.jsx
-// Deskripsi: Halaman UI untuk manajemen peralatan laboratorium.
+// Deskripsi: Menambahkan kolom "Digunakan pada" untuk menampilkan di mana saja
+// sebuah alat telah digunakan, mengimplementasikan bagian dari Rancangan Efisiensi #4.
 
 import React, { useState, useMemo } from 'react';
 import { Button } from '../../components/ui/button';
@@ -13,6 +14,7 @@ import { useEquipment } from '../../hooks/useEquipment';
 import { SecureDeleteDialog } from '../../components/ui/SecureDeleteDialog';
 import { Badge } from '../../components/ui/badge';
 import { cn } from '../../lib/utils';
+import * as api from '../../api/electronAPI'; // Impor API untuk mengambil data penggunaan
 
 const EquipmentForm = ({ onSave, equipment }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -83,6 +85,30 @@ const EquipmentForm = ({ onSave, equipment }) => {
 
 export default function EquipmentManagerPage({ apiReady }) {
     const { equipment, loading, addEquipment, updateEquipment, deleteEquipment } = useEquipment(apiReady);
+    const [usageData, setUsageData] = useState({});
+
+    // Ambil semua data trial untuk mencari penggunaan alat
+    React.useEffect(() => {
+        if (apiReady) {
+            api.getAllTrials().then(allTrials => {
+                const usage = {};
+                const testPromises = allTrials.map(trial => 
+                    api.getTestsForTrial(trial.id).then(tests => {
+                        tests.forEach(test => {
+                            const inputData = JSON.parse(test.input_data_json || '{}');
+                            if (inputData.equipment_id) {
+                                if (!usage[inputData.equipment_id]) {
+                                    usage[inputData.equipment_id] = [];
+                                }
+                                usage[inputData.equipment_id].push(`${trial.projectName} / ${trial.trial_name}`);
+                            }
+                        });
+                    })
+                );
+                Promise.all(testPromises).then(() => setUsageData(usage));
+            });
+        }
+    }, [apiReady, equipment]); // Refresh saat equipment berubah
 
     const getStatusBadge = (item) => {
         const today = new Date();
@@ -113,19 +139,23 @@ export default function EquipmentManagerPage({ apiReady }) {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Nama Alat</TableHead>
-                                <TableHead>Nomor Seri</TableHead>
                                 <TableHead>Status Kalibrasi</TableHead>
                                 <TableHead>Kalibrasi Berikutnya</TableHead>
+                                <TableHead>Digunakan Pada</TableHead>
                                 <TableHead className="text-right">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {equipment.map(item => (
                                 <TableRow key={item.id}>
-                                    <TableCell className="font-medium">{item.name}</TableCell>
-                                    <TableCell>{item.serial_number}</TableCell>
+                                    <TableCell className="font-medium">{item.name}<br/><span className="text-xs text-muted-foreground">{item.serial_number}</span></TableCell>
                                     <TableCell>{getStatusBadge(item)}</TableCell>
                                     <TableCell>{new Date(item.next_calibration_date).toLocaleDateString('id-ID')}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">
+                                        {(usageData[item.id] || []).length > 0 
+                                            ? `${(usageData[item.id] || []).length} pengujian`
+                                            : 'Belum digunakan'}
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <EquipmentForm onSave={updateEquipment} equipment={item} />
                                         <SecureDeleteDialog

@@ -1,6 +1,6 @@
 // Lokasi file: src/features/Projects/CompressiveStrengthTest.jsx
-// Deskripsi: Dirombak total untuk menjadi tampilan data saja.
-// Tombol "Tambah Benda Uji" dihapus karena pembuatannya kini melalui Penerimaan Sampel.
+// Deskripsi: Form input hasil uji kini memiliki dropdown untuk memilih peralatan yang digunakan,
+// lengkap dengan peringatan jika kalibrasi alat sudah kedaluwarsa (Rancangan Efisiensi #4).
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
@@ -15,25 +15,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../../components/ui/badge';
 import { SecureDeleteDialog } from '../../components/ui/SecureDeleteDialog';
 import { cn } from '../../lib/utils';
+import { useEquipment } from '../../hooks/useEquipment'; // Impor hook equipment
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-const DatasheetHeader = ({ metadata, onMetadataChange }) => (
-    <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50 mb-4">
-        <Input placeholder="Diuji oleh..." value={metadata.testedBy || ''} onChange={e => onMetadataChange('testedBy', e.target.value)} />
-        <Input placeholder="Diperiksa oleh..." value={metadata.checkedBy || ''} onChange={e => onMetadataChange('checkedBy', e.target.value)} />
-        <Input placeholder="Metode Uji (e.g., SNI 1974:2011)" value={metadata.testMethod || ''} onChange={e => onMetadataChange('testMethod', e.target.value)} />
-        <Input type="date" value={metadata.testDate || ''} onChange={e => onMetadataChange('testDate', e.target.value)} />
-    </div>
-);
-
 // Form ini sekarang hanya digunakan untuk mengedit/memasukkan hasil pengujian.
-export const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) => {
+export const SpecimenForm = ({ onSave, isEditing = false, initialData = null, apiReady }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // --- RANCANGAN #4: State untuk Peralatan ---
+    const { equipment } = useEquipment(apiReady);
+    const [selectedEquipmentId, setSelectedEquipmentId] = useState('');
+    const [calibrationWarning, setCalibrationWarning] = useState('');
 
     const defaultState = {
         specimen_id: '',
@@ -53,17 +50,37 @@ export const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) 
     useEffect(() => {
         if (isOpen) {
             if (isEditing && initialData) {
+                const initialEqId = initialData.input_data?.equipment_id || '';
                 setInputData({
                     ...defaultState,
                     ...initialData,
                     planned_age_days: initialData.age_days,
                     ...initialData.input_data,
                 });
+                setSelectedEquipmentId(initialEqId);
             } else {
                 setInputData(defaultState);
+                setSelectedEquipmentId('');
             }
         }
     }, [isOpen, isEditing, initialData]);
+
+    // --- RANCANGAN #4: Cek status kalibrasi saat alat dipilih ---
+    useEffect(() => {
+        const selectedEq = equipment.find(e => e.id === parseInt(selectedEquipmentId));
+        if (selectedEq) {
+            const today = new Date().setHours(0, 0, 0, 0);
+            const nextCalDate = new Date(selectedEq.next_calibration_date).setHours(0, 0, 0, 0);
+            if (nextCalDate < today) {
+                setCalibrationWarning(`Peringatan: Kalibrasi alat "${selectedEq.name}" telah kedaluwarsa pada ${formatDate(selectedEq.next_calibration_date)}.`);
+            } else {
+                setCalibrationWarning('');
+            }
+        } else {
+            setCalibrationWarning('');
+        }
+    }, [selectedEquipmentId, equipment]);
+
 
     const derivedValues = useMemo(() => {
         const plannedAge = parseInt(inputData.planned_age_days, 10);
@@ -107,7 +124,11 @@ export const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) 
             specimen_shape: inputData.specimen_shape,
             curing_method: inputData.curing_method,
             test_type: 'compressive_strength',
-            input_data_json: JSON.stringify({ diameter: inputData.diameter, max_load: inputData.max_load || null }),
+            input_data_json: JSON.stringify({ 
+                diameter: inputData.diameter, 
+                max_load: inputData.max_load || null,
+                equipment_id: selectedEquipmentId || null // Simpan ID alat
+            }),
             result_data_json: JSON.stringify(hasTestData ? { strength_MPa: derivedValues.strength_MPa } : {}),
             status: hasTestData ? 'Telah Diuji' : 'Dalam Perawatan',
             testedBy: inputData.testedBy,
@@ -126,7 +147,6 @@ export const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                {/* Tombol pemicu sekarang hanya ikon pensil untuk mengedit */}
                 <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil size={14} /></Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
@@ -134,53 +154,28 @@ export const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) 
                     <DialogTitle>Edit Lembar Data Uji Tekan</DialogTitle>
                     <DialogDescription>Masukkan atau perbarui hasil pengujian untuk benda uji ini.</DialogDescription>
                 </DialogHeader>
-                <DatasheetHeader metadata={{
-                    testedBy: inputData.testedBy,
-                    checkedBy: inputData.checkedBy,
-                    testMethod: inputData.testMethod,
-                    testDate: inputData.testing_date || derivedValues.plannedTestDate
-                }} onMetadataChange={(field, value) => setInputData(prev => ({...prev, [field]: value}))} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 py-4">
                     <div className="space-y-3">
-                        <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">Perencanaan</h4>
-                        <div>
-                            <Label htmlFor="specimen_id">ID Benda Uji</Label>
-                            <Input id="specimen_id" placeholder="Contoh: A1, B2" value={inputData.specimen_id} onChange={e => setInputData({...inputData, specimen_id: e.target.value})} />
-                            {validation.errors.specimen_id && <p className="text-xs text-destructive mt-1">{validation.errors.specimen_id}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="casting_date">Tanggal Pengecoran</Label>
-                            <Input id="casting_date" type="date" value={inputData.casting_date} onChange={e => setInputData({...inputData, casting_date: e.target.value})} />
-                        </div>
-                        <div>
-                            <Label htmlFor="planned_age_days">Umur Uji Rencana (hari)</Label>
-                            <Input id="planned_age_days" type="number" value={inputData.planned_age_days} onChange={e => setInputData({...inputData, planned_age_days: e.target.value})} />
-                            {validation.errors.planned_age_days && <p className="text-xs text-destructive mt-1">{validation.errors.planned_age_days}</p>}
-                        </div>
-                        <div>
-                            <Label>Tanggal Uji Rencana</Label>
-                            <Input type="date" value={derivedValues.plannedTestDate} readOnly className="bg-muted/50" />
-                        </div>
+                        <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">Data Benda Uji</h4>
+                        <div><Label>ID Benda Uji</Label><Input value={inputData.specimen_id} readOnly className="bg-muted/50"/></div>
+                        <div><Label>Tanggal Pengecoran</Label><Input type="date" value={inputData.casting_date} readOnly className="bg-muted/50"/></div>
+                        <div><Label>Umur Uji Rencana (hari)</Label><Input type="number" value={inputData.planned_age_days} readOnly className="bg-muted/50"/></div>
+                         <div><Label>Tanggal Uji Rencana</Label><Input type="date" value={derivedValues.plannedTestDate} readOnly className="bg-muted/50" /></div>
                     </div>
                     <div className="space-y-3">
-                        <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">Properti & Hasil</h4>
+                        <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">Hasil Pengujian</h4>
                         <div>
-                            <Label htmlFor="specimen_shape">Bentuk Benda Uji</Label>
-                            <Select value={inputData.specimen_shape} onValueChange={val => setInputData({...inputData, specimen_shape: val})}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent><SelectItem value="Silinder">Silinder</SelectItem><SelectItem value="Kubus">Kubus</SelectItem></SelectContent>
+                            <Label>Alat Uji Tekan</Label>
+                            <Select value={selectedEquipmentId} onValueChange={setSelectedEquipmentId}>
+                                <SelectTrigger><SelectValue placeholder="Pilih alat..."/></SelectTrigger>
+                                <SelectContent>
+                                    {equipment.map(eq => <SelectItem key={eq.id} value={eq.id.toString()}>{eq.name} ({eq.serial_number})</SelectItem>)}
+                                </SelectContent>
                             </Select>
+                            {calibrationWarning && <p className="text-xs text-destructive mt-1">{calibrationWarning}</p>}
                         </div>
-                        <div>
-                            <Label htmlFor="diameter">Diameter/Sisi (mm)</Label>
-                            <Input id="diameter" type="number" value={inputData.diameter} onChange={e => setInputData({...inputData, diameter: e.target.value})} />
-                             {validation.errors.diameter && <p className="text-xs text-destructive mt-1">{validation.errors.diameter}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="max_load">Beban Maksimum (kN)</Label>
-                            <Input id="max_load" type="number" value={inputData.max_load} onChange={e => setInputData({...inputData, max_load: e.target.value})} placeholder="Isi untuk menghitung kekuatan" />
-                            {validation.errors.max_load && <p className="text-xs text-destructive mt-1">{validation.errors.max_load}</p>}
-                        </div>
+                        <div><Label>Diameter/Sisi (mm)</Label><Input type="number" value={inputData.diameter} onChange={e => setInputData({...inputData, diameter: e.target.value})} /></div>
+                        <div><Label>Beban Maksimum (kN)</Label><Input type="number" value={inputData.max_load} onChange={e => setInputData({...inputData, max_load: e.target.value})} placeholder="Isi untuk menghitung kekuatan" /></div>
                         <div className="pt-2">
                             <h4 className="font-semibold">Hasil Kuat Tekan</h4>
                             <p className="text-2xl font-bold">{derivedValues.strength_MPa?.toFixed(2) || '-'} MPa</p>
@@ -200,7 +195,7 @@ export const SpecimenForm = ({ onSave, isEditing = false, initialData = null }) 
 };
 
 // Komponen utama
-export default function CompressiveStrengthTest({ trial, chartRef }) {
+export default function CompressiveStrengthTest({ trial, chartRef, apiReady }) { // Tambahkan prop apiReady
     const { tests, updateTest, deleteTest } = useConcreteTests(trial?.id);
 
     const chartData = useMemo(() => {
@@ -254,7 +249,6 @@ export default function CompressiveStrengthTest({ trial, chartRef }) {
 
             <div className="flex justify-between items-center mt-6 mb-4">
                 <h3 className="font-semibold">Manajemen Benda Uji</h3>
-                {/* Tombol Tambah Benda Uji dihapus dari sini */}
             </div>
             {tests.length === 0 ? (
                  <div className="text-center py-10 border-2 border-dashed rounded-lg">
@@ -285,7 +279,7 @@ export default function CompressiveStrengthTest({ trial, chartRef }) {
                                 <TableCell>{test.age_days}</TableCell>
                                 <TableCell className="text-right font-medium">{test.result_data.strength_MPa?.toFixed(2) || '-'}</TableCell>
                                 <TableCell className="flex justify-center items-center gap-1">
-                                    <SpecimenForm onSave={updateTest} isEditing={true} initialData={test} />
+                                    <SpecimenForm onSave={updateTest} isEditing={true} initialData={test} apiReady={apiReady} />
                                     <SecureDeleteDialog
                                         trigger={<Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"><Trash2 size={14} /></Button>}
                                         title="Hapus Benda Uji?"
